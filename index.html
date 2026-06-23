@@ -19,9 +19,9 @@
   body{background:radial-gradient(120% 120% at 50% 0%, #1b1630 0%, #120e22 60%, #0a0816 100%);}
   #stage{position:fixed;inset:0;z-index:0}
   #ui{position:fixed;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;
-      text-align:center;padding:24px;pointer-events:none}
-  #ui > *{pointer-events:auto}
-  .logo3d-space{height:46vh;min-height:240px;width:100%}
+      text-align:center;padding:24px 24px 66px;pointer-events:none;overflow-y:auto}
+  #ui > *{pointer-events:auto;flex-shrink:0}
+  .logo3d-space{height:38vh;min-height:200px;width:100%}
   h1{font-size:clamp(34px,6vw,68px);font-weight:700;letter-spacing:.06em;
      background:linear-gradient(180deg,#fff 0%,#cfc6f2 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
      text-shadow:0 2px 30px rgba(120,100,200,.35);margin-top:-10px}
@@ -54,8 +54,10 @@
   .agree{display:flex;align-items:flex-start;gap:8px;font-size:11px;color:#a89fd0;margin-top:12px;text-align:left;line-height:1.6}
   .agree a{color:#cfc6f2}
   .agree input{margin-top:2px}
-  footer{position:fixed;left:0;right:0;bottom:0;z-index:2;text-align:center;font-size:11px;color:#6f6796;padding:10px}
-  footer a{color:#8a82b3}
+  footer{position:fixed;left:0;right:0;bottom:0;z-index:1;text-align:center;font-size:11px;color:#8a82b3;
+         padding:8px 10px;pointer-events:none;line-height:1.5;
+         background:linear-gradient(180deg,rgba(10,8,22,0),rgba(10,8,22,.9) 55%)}
+  footer a{color:#8a82b3;pointer-events:auto}
   .badge{position:fixed;top:14px;left:14px;z-index:2;font-size:11px;color:#8a82b3;letter-spacing:.15em}
   .hidden{display:none!important}
   @media(max-height:620px){.logo3d-space{height:34vh;min-height:170px}}
@@ -94,8 +96,7 @@
   </div>
 
   <footer>
-    © 2026 DRONE PEAK / 湊運輸倉庫　｜　受講者本人の学習用途に限定　｜
-    <a href="./LICENSE" target="_blank">LICENSE</a>・<a href="./README.md" target="_blank">README</a>
+    © 2026 湊運輸倉庫株式会社　｜　DRONEPEAKマルチコプターフライトスクール
   </footer>
 
   <script src="./three.min.js"></script>
@@ -246,8 +247,8 @@
     if(VALID_HASHES.includes(hex)){
       localStorage.setItem(LS_KEY,'1');
       localStorage.setItem('dp_activated_at', new Date().toISOString());
-      msg.className='msg ok'; msg.textContent='認証に成功しました。';
-      setTimeout(showLaunch,500);
+      msg.className='msg ok'; msg.textContent='認証に成功しました。シミュレーターを起動します…';
+      setTimeout(()=>{ location.href=SIM_URL; }, 600);
     }else{
       msg.className='msg err'; msg.textContent='キーが正しくありません。';
     }
@@ -259,4 +260,8 @@
     $('gateMsg').textContent=''; showGate();
   });
   $('termsLink').addEventListener('click', e=>{ e.preventDefault();
-    alert('【利用規約（要旨）】\n・本シミュレーターは DRONE PEAK 受講者本人の学習目的にのみ使用できます。\n・ファイルの再配布・再販・第三者への共有・無断公開を禁止します。\n・アクティベーションキーの共有・転載を
+    alert('【利用規約（要旨）】\n・本シミュレーターは DRONE PEAK 受講者本人の学習目的にのみ使用できます。\n・ファイルの再配布・再販・第三者への共有・無断公開を禁止します。\n・アクティベーションキーの共有・転載を禁止します。\n詳細は LICENSE / README を参照してください。');
+  });
+  </script>
+</body>
+</html>
