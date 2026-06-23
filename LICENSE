@@ -1,0 +1,53 @@
+DRONEPEAK FLIGHT SIM ― 専有ライセンス（All Rights Reserved）
+
+Copyright (c) 2026 湊運輸倉庫株式会社（DRONE PEAK）. All Rights Reserved.
+
+本ソフトウェア「DRONEPEAK FLIGHT SIM」（そのソースコード、画像、音声、3D表現、
+ドキュメント等の一切を含む。以下「本ソフトウェア」）の著作権その他の知的財産権は、
+湊運輸倉庫株式会社（以下「権利者」）に帰属します。
+
+権利者の書面による事前の許可がない限り、以下の行為を禁止します。
+  1. 本ソフトウェアの全部または一部の複製、改変、翻案
+  2. 頒布、再配布、公衆送信、アップロード、貸与、販売、サブライセンス
+  3. リバースエンジニアリング、逆コンパイル、逆アセンブル
+  4. 著作権表示その他の権利表示の削除・改変
+  5. その他、権利者の許諾範囲を超える一切の利用
+
+本ソフトウェアは「現状のまま（AS IS）」提供され、明示または黙示を問わず、
+商品性、特定目的への適合性、非侵害性を含むいかなる保証も行いません。
+本ソフトウェアの利用または利用不能により生じたいかなる損害についても、
+権利者は一切の責任を負いません。
+
+本ソフトウェアに同梱される第三者ソフトウェア（Three.js 等）のライセンスは、
+THIRD_PARTY_LICENSES.md に従います。これらの第三者ライセンスは本専有ライセンスに
+優先して各々の条件が適用されます。
+
+お問い合わせ・利用許諾のご相談：湊運輸倉庫株式会社（DRONE PEAK）
+
+--------------------------------------------------------------------------------
+
+DRONEPEAK FLIGHT SIM ― Proprietary License (All Rights Reserved)
+
+Copyright (c) 2026 Minato Transport & Warehouse Co., Ltd. (DRONE PEAK).
+All Rights Reserved.
+
+This software "DRONEPEAK FLIGHT SIM" (including its source code, images, audio,
+3D representations, and documentation; the "Software") and all intellectual
+property rights therein are owned by Minato Transport & Warehouse Co., Ltd.
+(the "Owner").
+
+Without the prior written permission of the Owner, you may NOT:
+  1. copy, modify, or adapt the Software in whole or in part;
+  2. distribute, redistribute, publicly transmit, upload, lend, sell, or sublicense it;
+  3. reverse engineer, decompile, or disassemble it;
+  4. remove or alter any copyright or proprietary notices;
+  5. otherwise use the Software beyond the scope expressly permitted by the Owner.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE OWNER BE LIABLE FOR ANY CLAIM, DAMAGES, OR
+OTHER LIABILITY ARISING FROM OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
+
+Third-party components bundled with the Software (e.g., Three.js) are licensed under
+their own terms; see THIRD_PARTY_LICENSES.md. Those third-party licenses govern the
+respective components and prevail over this proprietary license for those components.

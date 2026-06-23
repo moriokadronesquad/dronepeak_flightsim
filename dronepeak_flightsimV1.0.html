@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DRONEPEAK｜二等実地講習シミュレーター</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #87a9c4; font-family: "Segoe UI", "Hiragino Sans", sans-serif; }
+  #app { position: fixed; inset: 0; }
+  #pip { position: fixed; display: none; border: 2px solid #37e0ff; border-radius: 8px;
+         box-shadow: 0 4px 16px rgba(0,0,0,.5); pointer-events: none; z-index: 6; }
+  #pip.show { display: block; }
+  #pipLabel { position: absolute; top: -1px; left: -1px; background: #37e0ff; color: #06222b;
+              font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 6px 0 6px 0; }
+  #fpvBadge { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+              color: rgba(255,255,255,.18); font-size: 28px; font-weight: 800; letter-spacing: 3px;
+              pointer-events: none; z-index: 5; display: none; }
+  #fpvBadge.show { display: block; }
+  #hud { position: fixed; top: 12px; left: 12px; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.6);
+         font-size: 14px; line-height: 1.7; pointer-events: none; background: rgba(0,0,0,.28);
+         padding: 10px 14px; border-radius: 8px; min-width: 210px; }
+  #hud b { color: #ffe27a; font-variant-numeric: tabular-nums; }
+  #hud .mode { color: #7ad1ff; }
+  #hTimeRow { font-size: 22px; font-weight: 700; margin-bottom: 2px; }
+  #hTimeRow b { font-size: 26px; }
+  #hScoreRow { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+  #hScoreRow b { font-size: 22px; }
+  #panel { position: fixed; top: 12px; right: 12px; background: rgba(20,28,38,.86); color: #e8eef5;
+           padding: 12px 14px; border-radius: 10px; font-size: 13px; width: 240px; }
+  #panel h3 { font-size: 13px; margin-bottom: 8px; color: #ffe27a; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  #panelToggle { background:#444f60; color:#fff; border:none; border-radius:5px; padding:3px 8px; font-size:11px; cursor:pointer; }
+  #panelToggle:hover { filter:brightness(1.15); }
+  #panel.collapsed { width:auto; }
+  #panel.collapsed #panelBody { display:none; }
+  #examBar { display:flex; gap:6px; margin-bottom:8px; }
+  #examBar .ebtn { flex:1; border:none; border-radius:6px; padding:7px 4px; font-size:12px; color:#fff; cursor:pointer; background:#2d6cdf; }
+  #examBar .ebtn.start { background:#2bb673; }
+  #examBar .ebtn.stop { background:#c0432f; }
+  #examBar .ebtn:hover { filter:brightness(1.12); }
+  #panel .row { display: flex; justify-content: space-between; align-items: center; margin: 7px 0; gap: 8px; }
+  #panel button { background: #2d6cdf; color: #fff; border: none; padding: 6px 10px; border-radius: 6px;
+                  cursor: pointer; font-size: 12px; }
+  #panel button.toggle { background: #444f60; }
+  #panel button.toggle.on { background: #2bb673; }
+  #panel button:hover { filter: brightness(1.1); }
+  #panel select { background:#0c1219; color:#e8eef5; border:1px solid #2a3a4d; border-radius:6px;
+                  padding:5px 8px; font-size:12px; max-width:150px; }
+  #gp { font-size: 12px; color: #9fb3c8; margin-top: 6px; }
+  #gp.ok { color: #6fe39a; }
+  #help { position: fixed; bottom: 12px; left: 12px; color: #eef; font-size: 12px;
+          background: rgba(0,0,0,.32); padding: 8px 12px; border-radius: 8px; line-height: 1.6; max-width: 470px; }
+  #instructor { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 20;
+                background: rgba(18,28,40,.9); color: #fff; padding: 12px 22px; border-radius: 12px;
+                text-align: center; min-width: 360px; max-width: 80vw; box-shadow: 0 4px 18px rgba(0,0,0,.4);
+                border: 1px solid #2a6ca8; }
+  #instrText { font-size: 16px; font-weight: 600; color: #d6ecff; }
+  #instrSub { font-size: 13px; color: #7ad1ff; margin-top: 4px; min-height: 16px; font-variant-numeric: tabular-nums; }
+  #legend { position: fixed; bottom: 12px; right: 12px; background: rgba(20,28,38,.86); color:#e8eef5;
+            padding: 10px 12px; border-radius: 8px; font-size: 12px; line-height: 1.9; }
+  #legend .sw { display:inline-block; width:13px; height:13px; border-radius:3px; margin-right:7px; vertical-align:-2px; }
+  #panel input[type=range] { width: 120px; }
+  #panel .slabel { font-size: 11px; color:#9fb3c8; min-width: 64px; }
+  kbd { background:#fff; color:#222; border-radius:4px; padding:0 5px; font-size:11px; border:1px solid #ccd; }
+
+  /* キャリブレーション(スティック割り当て)オーバーレイ */
+  #calib { position: fixed; inset: 0; background: rgba(8,12,18,.72); display: none; z-index: 50;
+           align-items: center; justify-content: center; }
+  #calib.show { display: flex; }
+  #calibBox { background: #131b25; color: #e8eef5; width: min(620px, 92vw); max-height: 90vh; overflow:auto;
+              border-radius: 14px; padding: 20px 22px; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+  #calibBox h2 { font-size: 17px; color: #ffe27a; margin-bottom: 4px; }
+  #calibBox p.sub { font-size: 12px; color: #9fb3c8; margin-bottom: 14px; }
+  .sect { margin: 14px 0; }
+  .sect h4 { font-size: 13px; color: #7ad1ff; margin-bottom: 8px; border-bottom: 1px solid #2a3a4d; padding-bottom: 4px;}
+  .axisRow, .fnRow { display: flex; align-items: center; gap: 10px; margin: 6px 0; font-size: 12px; }
+  .axisName { width: 64px; color:#cdd; }
+  .bar { flex: 1; height: 12px; background: #0c1219; border-radius: 6px; position: relative; overflow: hidden; }
+  .bar .fill { position: absolute; top:0; bottom:0; left:50%; background:#2d8cff; width:0; }
+  .bar .mid { position:absolute; left:50%; top:0; bottom:0; width:1px; background:#3a4a5d; }
+  .val { width: 46px; text-align: right; font-variant-numeric: tabular-nums; color:#9fb3c8; }
+  .fnRow select, .fnRow label { font-size: 12px; }
+  .fnRow .fnName { width: 130px; }
+  .fnRow select { background:#0c1219; color:#e8eef5; border:1px solid #2a3a4d; border-radius:5px; padding:3px 6px; }
+  .fnRow button.learn { background:#7a5cd0; color:#fff; border:none; padding:4px 9px; border-radius:5px; cursor:pointer; font-size:11px;}
+  .fnRow button.learn.active { background:#ffae42; color:#222; }
+  .calibBtns { display:flex; gap:10px; margin-top:16px; flex-wrap: wrap; }
+  .calibBtns button { border:none; border-radius:7px; padding:9px 14px; cursor:pointer; font-size:13px; color:#fff; }
+  .bClose { background:#2bb673; } .bPreset{ background:#2d6cdf; } .bReset{ background:#5a6675; }
+  .learnMsg { font-size:12px; color:#ffae42; min-height:16px; margin-top:6px; }
+  .btnRow { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+  .padbtn { font-size:10px; padding:2px 6px; border-radius:4px; background:#0c1219; border:1px solid #2a3a4d; color:#7e8ea0; }
+  .padbtn.on { background:#2bb673; color:#fff; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<!-- 背景ロゴは地面テクスチャとして3D内に配置(makeGroundLogo) -->
+
+<!-- 目視外FPV時の「直上ナビ」ワイプ枠(WebGLがこの領域に真上ビューを描画) -->
+<div id="pip"><div id="pipLabel">直上ナビ</div></div>
+<div id="fpvBadge">● FPV（目視外）</div>
+
+
+<div id="hud">
+  <div id="hTimeRow">制限時間 <b id="hTime">8:00</b></div>
+  <div id="hScoreRow">持ち点 <b id="hScore">100</b> 点 <span id="hDeduct" style="font-size:13px;color:#ff9a9a;"></span> <span style="font-size:11px;color:#9fb3c8;">(合格70)</span></div>
+  飛行モード: <span class="mode" id="hFlight">GPS (N)</span><br>
+  入力モード: <span class="mode" id="hStick">モード2</span><br>
+  高度: <b id="hAlt">0.00</b> m<br>
+  水平速度: <b id="hSpd">0.00</b> m/s<br>
+  機首方位: <b id="hYaw">0</b>°<br>
+  位置 X/Y: <b id="hPos">0.0, 0.0</b> m
+</div>
+
+<div id="panel">
+  <h3>DRONEPEAK FLIGHT SIM <button id="panelToggle">隠す ▴</button></h3>
+  <div id="examBar">
+    <button id="btnExam" class="ebtn start">▶ 実地審査開始</button>
+    <button id="btnStopHdr" class="ebtn stop">⏹ 停止</button>
+    <button id="btnResetHdr" class="ebtn">↺ リセット</button>
+  </div>
+  <div id="panelBody">
+  <div class="row"><span>限定変更</span>
+    <select id="varSel">
+      <option value="basic">基本（目視内・昼間）</option>
+      <option value="bvlos">目視外</option>
+      <option value="night">夜間</option>
+    </select></div>
+  <div class="row"><span>種目</span>
+    <select id="courseSel">
+      <option value="square">スクエア飛行</option>
+      <option value="figure8">8の字飛行</option>
+      <option value="abnormal">異常事態における飛行</option>
+    </select></div>
+  <div class="row"><span>入力モード</span>
+    <button id="btnStick">モード2</button></div>
+  <div class="row"><span>スティック割り当て</span>
+    <button id="btnCalib">開く 🎮</button></div>
+  <div class="row"><span>飛行モード</span>
+    <button id="btnFlight" class="toggle on">GPS</button></div>
+  <div class="row"><span>カメラ</span>
+    <button id="btnCam">操縦者視点</button></div>
+  <div class="row"><span class="slabel">カメラ高さ</span>
+    <input type="range" id="camH" min="1" max="12" step="0.2" value="3.8"></div>
+  <div class="row"><span class="slabel">カメラ距離</span>
+    <input type="range" id="camD" min="5" max="20" step="0.2" value="9.5"></div>
+  <div class="row"><span class="slabel">注視点高さ</span>
+    <input type="range" id="camL" min="0" max="4" step="0.1" value="1.0"></div>
+  <div class="row"><span>音声ガイド</span>
+    <button id="btnVoice" class="toggle on">音声 ON</button></div>
+  <div class="row"><span>飛行ガイド線</span>
+    <button id="btnGuide" class="toggle on">表示</button></div>
+  <div class="row"><span>風速(10段階)</span>
+    <select id="windLv"></select></div>
+  <div class="row"><span>風向き(8方位)</span>
+    <select id="windDir"></select></div>
+  <div class="row"><span>航行ルート順</span>
+    <select id="stageSel"></select></div>
+  <div class="row"><span>リセット</span>
+    <button id="btnReset">着陸位置へ</button></div>
+  <div id="gp">🎮 ゲームパッド: 未接続（キーボードで操作可）</div>
+  </div>
+</div>
+
+<div id="help">
+  <b>キーボード操作（パッド未接続時）:</b>
+  スロットル <kbd>W</kbd><kbd>S</kbd>、エレベーター(前後) <kbd>↑</kbd><kbd>↓</kbd>、
+  ラダー(ヨー) <kbd>A</kbd><kbd>D</kbd>、エルロン(左右) <kbd>←</kbd><kbd>→</kbd>
+</div>
+
+<!-- 講師役ナビ バナー -->
+<div id="instructor">
+  <div id="instrText">「実地審査開始」を押すと講師役が流れを案内します。</div>
+  <div id="instrSub"></div>
+</div>
+
+<!-- 区画凡例 -->
+<div id="legend">
+  <div><span class="sw" style="background:#2980e0"></span>飛行可</div>
+  <div><span class="sw" style="background:#f0be46"></span>減点区画（〜1.5m）</div>
+  <div><span class="sw" style="background:#c8465a"></span>不合格区画（2.5m超）</div>
+</div>
+
+<!-- スティック割り当て画面 -->
+<div id="calib">
+  <div id="calibBox">
+    <h2>スティック割り当て / キャリブレーション</h2>
+    <p class="sub">プロポによって軸の番号・向きが異なります。各操作の「学習」を押してから、そのスティックを大きく動かすと自動で割り当てられます。向きが逆なら「反転」をオンにしてください。</p>
+
+    <div class="sect">
+      <h4>検出された軸（リアルタイム）</h4>
+      <div id="axisList"><div class="axisRow"><span class="axisName">—</span><span style="color:#9fb3c8;font-size:12px">パッド未接続</span></div></div>
+      <h4 style="margin-top:10px;">ボタン</h4>
+      <div id="btnList" class="btnRow"><span style="color:#7e8ea0;font-size:11px">—</span></div>
+    </div>
+
+    <div class="sect">
+      <h4>操作の割り当て</h4>
+      <div id="fnRows"></div>
+      <div class="learnMsg" id="learnMsg"></div>
+    </div>
+
+    <div class="calibBtns">
+      <button id="autoAssign" style="background:#e0852a;">🎮 オート割り当て(軸を読込)</button>
+      <button class="bPreset" id="presetM2">モード2 標準</button>
+      <button class="bPreset" id="presetM1">モード1 標準</button>
+      <button class="bReset" id="calibClearLearn">中止</button>
+      <button class="bClose" id="calibClose">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- Three.js は同じフォルダの three.min.js をローカル読み込み(完全オフライン) -->
+<script src="three.min.js"></script>
+<script>
+// =========================================================================
+//  二等実地試験シミュレーター P0 試作
+//  3D空間に Mavic 3 Classic を表示し、プロポ(モード1/2/任意割当)/キーボードで
+//  GPSモードの飛行モデルにより操縦できることを確認する。採点は未実装(P2以降)。
+// =========================================================================
+
+const CFG = {
+  maxHorizontalSpeed: 8.0, maxAscent: 4.0, maxDescent: 3.0,
+  maxYawRate: 90 * Math.PI/180, velTau: 0.55, yawTau: 0.20, gpsDrift: 0.03,
+  attiWind: new THREE.Vector3(1.2, 0, 0.6), attiGust: 0.8, deadzone: 0.09
+};
+
+// ---- シーン ----
+const app = document.getElementById('app');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+app.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87a9c4);
+scene.fog = new THREE.Fog(0x87a9c4, 40, 120);
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 500);
+
+// 光源はコート直上(真上)。機体の影が真下に落ち、ラインをなぞる目印になる。
+const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+sun.position.set(0, 30, 0); sun.target.position.set(0,0,0); scene.add(sun.target);
+sun.castShadow = true;
+sun.shadow.camera.left=-12; sun.shadow.camera.right=12; sun.shadow.camera.top=12; sun.shadow.camera.bottom=-12;
+sun.shadow.camera.near=0.5; sun.shadow.camera.far=60; sun.shadow.bias=-0.0004;
+sun.shadow.mapSize.set(2048,2048); scene.add(sun);
+const hemi = new THREE.HemisphereLight(0xcfe6ff, 0x4a5d3a, 0.55); scene.add(hemi);
+// 夜間用: 離陸ヘリパッド(H=原点)付近を照らす照明 + 機体追従の弱い灯火(applyEnvironmentでON/OFF)
+const padLight = new THREE.PointLight(0xfff0cc, 0.0, 18, 2.0); padLight.position.set(0, 3.6, 0); scene.add(padLight);
+const droneLight = new THREE.PointLight(0xffffff, 0.0, 6, 2.0); scene.add(droneLight);
+
+// 限定変更/表示モード用の追加カメラ
+const fpvCam = new THREE.PerspectiveCamera(78, window.innerWidth/window.innerHeight, 0.05, 500); // 機体カメラ(目視外FPV)
+const topCam = new THREE.PerspectiveCamera(50, 1, 0.5, 200);                                     // 直上ナビ(真上から)
+let variation = 'basic';     // basic / bvlos(目視外) / night(夜間)
+let renderMode = 'normal';   // normal / fpv
+// 機体はレイヤー1。通常カメラと直上ナビは機体を表示、FPVカメラは機体を映さない(機首映り込み防止)
+camera.layers.enable(1); topCam.layers.enable(1);
+
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(200,200),
+  new THREE.MeshStandardMaterial({ color: 0x5f7a4a }));
+ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
+const grid = new THREE.GridHelper(60,60,0x335533,0x456b45); grid.position.y = 0.005; scene.add(grid);
+
+// 背景ロゴ DRONE PEAK を地面に配置(コートの5m奥・透過40%)。DRONE=細字 / PEAK=太字 を再現
+(function makeGroundLogo(){
+  const c=document.createElement('canvas'); c.width=1024; c.height=200;
+  const g=c.getContext('2d'); g.textBaseline='middle'; g.fillStyle='#ffffff';
+  const f1='400 112px "Segoe UI","Hiragino Sans",sans-serif', f2='800 112px "Segoe UI","Hiragino Sans",sans-serif';
+  g.font=f1; const w1=g.measureText('DRONE ').width;
+  g.font=f2; const w2=g.measureText('PEAK').width;
+  let x=(1024-(w1+w2))/2;
+  g.textAlign='left'; g.font=f1; g.fillText('DRONE ',x,108);
+  g.font=f2; g.fillText('PEAK', x+w1, 108);
+  const tex=new THREE.CanvasTexture(c);
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(13, 13*200/1024),
+    new THREE.MeshBasicMaterial({ map:tex, transparent:true, opacity:0.4, depthWrite:false }));
+  m.rotation.x=-Math.PI/2; m.position.set(0,0.02,-11); scene.add(m); // コート最奥(約-6)から約5m奥
+})();
+
+// ---- コート(地面に描画) : スクエア飛行 13×5 / 減点区画+1.5m / 不合格区画+2.5m ----
+function groundPlane(w, d, color, opacity, y) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d),
+    new THREE.MeshBasicMaterial({ color, transparent:true, opacity, depthWrite:false }));
+  m.rotation.x = -Math.PI/2; m.position.y = y; scene.add(m); return m;
+}
+function groundOutline(w, d, color, y) {
+  const hx=w/2, hz=d/2;
+  const g = new THREE.BufferGeometry().setFromPoints(
+    [[-hx,y,-hz],[hx,y,-hz],[hx,y,hz],[-hx,y,hz],[-hx,y,-hz]].map(p=>new THREE.Vector3(...p)));
+  scene.add(new THREE.Line(g, new THREE.LineBasicMaterial({ color })));
+}
+// ====================== コート(種目別) ======================
+const courseGroup = new THREE.Group(); scene.add(courseGroup);
+function groundLabel(text, x, z, w, color){
+  const c=document.createElement('canvas'); c.width=512; c.height=256;
+  const g=c.getContext('2d'); g.font='bold 120px sans-serif'; g.textAlign='center'; g.textBaseline='middle';
+  g.lineWidth=14; g.strokeStyle='rgba(0,0,0,0.7)'; g.strokeText(text,256,140);
+  g.fillStyle=color||'#ffffff'; g.fillText(text,256,140);
+  const tex=new THREE.CanvasTexture(c);
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(w, w*0.5),
+    new THREE.MeshBasicMaterial({ map:tex, transparent:true, depthWrite:false }));
+  m.rotation.x=-Math.PI/2; m.position.set(x,0.026,z); courseGroup.add(m); return m;
+}
+// ヘリポートH(離着陸円の内側いっぱい・従来比約300%)
+function addHelipadH(x,z){
+  const c=document.createElement('canvas'); c.width=256; c.height=256;
+  const g=c.getContext('2d'); g.font='bold 230px sans-serif'; g.textAlign='center'; g.textBaseline='middle';
+  g.lineWidth=20; g.strokeStyle='rgba(0,0,0,0.6)'; g.strokeText('H',128,140);
+  g.fillStyle='#ffffff'; g.fillText('H',128,140);
+  const tex=new THREE.CanvasTexture(c);
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(1.7,1.7),
+    new THREE.MeshBasicMaterial({ map:tex, transparent:true, depthWrite:false }));
+  m.rotation.x=-Math.PI/2; m.position.set(x,0.027,z); courseGroup.add(m); return m;
+}
+function makeLabelSprite(text){
+  const c=document.createElement('canvas'); c.width=128; c.height=128;
+  const g=c.getContext('2d'); g.font='bold 92px sans-serif'; g.textAlign='center'; g.textBaseline='middle';
+  g.lineWidth=10; g.strokeStyle='#15324d'; g.strokeText(text,64,66);
+  g.fillStyle='#ffffff'; g.fillText(text,64,66);
+  const tex=new THREE.CanvasTexture(c);
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, depthTest:false, transparent:true, opacity:0.6 }));
+  s.scale.set(0.85,0.85,0.85); return s;
+}
+function addPylon(label,x,z){
+  const cone=new THREE.Mesh(new THREE.ConeGeometry(0.17,0.5,16), new THREE.MeshStandardMaterial({color:0xff7a1a}));
+  cone.position.set(x,0.25,z); cone.castShadow=true; courseGroup.add(cone);
+  const base=new THREE.Mesh(new THREE.BoxGeometry(0.36,0.05,0.36), new THREE.MeshStandardMaterial({color:0xff944d}));
+  base.position.set(x,0.025,z); base.castShadow=true; courseGroup.add(base);
+  const sp=makeLabelSprite(label); sp.position.set(x,0.95,z); courseGroup.add(sp);
+}
+function rectOutlineG(w,d,color,y){ const hx=w/2,hz=d/2;
+  const g=new THREE.BufferGeometry().setFromPoints([[-hx,y,-hz],[hx,y,-hz],[hx,y,hz],[-hx,y,hz],[-hx,y,-hz]].map(p=>new THREE.Vector3(...p)));
+  courseGroup.add(new THREE.Line(g,new THREE.LineBasicMaterial({color}))); }
+function circleOutlineG(cx,cz,r,color,y){ const pts=[];
+  for(let i=0;i<=64;i++){const a=i/64*Math.PI*2; pts.push(new THREE.Vector3(cx+Math.cos(a)*r,y,cz+Math.sin(a)*r));}
+  courseGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color}))); }
+function lineG(ax,az,bx,bz,color,y){
+  courseGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(ax,y,az),new THREE.Vector3(bx,y,bz)]),new THREE.LineBasicMaterial({color}))); }
+function buildZoneTexture(distFn){
+  const W=480,H=360,X0=-12,X1=12,Z0=-9,Z1=9;
+  const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+  const ctx=cv.getContext('2d'); const img=ctx.createImageData(W,H);
+  for(let py=0;py<H;py++) for(let px=0;px<W;px++){
+    const x=X0+(px/(W-1))*(X1-X0), z=Z0+(py/(H-1))*(Z1-Z0);
+    const d=distFn(x,z); let r,g,b;
+    if (d<=1.5){ r=41; g=128; b=224; } else if (d<=2.5){ r=240; g=190; b=70; } else { r=200; g=70; b=90; }
+    const i=(py*W+px)*4; img.data[i]=r; img.data[i+1]=g; img.data[i+2]=b; img.data[i+3]=150;
+  }
+  ctx.putImageData(img,0,0);
+  const tex=new THREE.CanvasTexture(cv); tex.magFilter=THREE.NearestFilter;
+  const pl=new THREE.Mesh(new THREE.PlaneGeometry(X1-X0,Z1-Z0),
+    new THREE.MeshBasicMaterial({ map:tex, transparent:true, depthWrite:false }));
+  pl.rotation.x=-Math.PI/2; pl.position.set((X0+X1)/2,0.012,(Z0+Z1)/2); courseGroup.add(pl);
+}
+function setFlight(m){ state.flight=m; const b=document.getElementById('btnFlight');
+  if(b){ b.textContent=m; b.classList.toggle('on', m==='GPS'); } }
+
+// ---- 種目定義 (スクエア / 8の字 / 異常事態) ----
+const COURSE_DEFS = {
+  square: {
+    name:'スクエア飛行', alt:3.5, timeLimit:480, flight:'GPS', H:[0,0],
+    dist:(x,z)=>{ const dx=Math.abs(x)-6.5, dz=Math.abs(z)-2.5;
+      return (dx>0||dz>0)?Math.hypot(Math.max(dx,0),Math.max(dz,0)):Math.min(-dx,-dz); },
+    exempt:(x,z)=> Math.abs(x)<=1.2 && z>=-1.2 && z<=2.8,
+    corridor:{w:2.4,d:4.0,x:0,z:0.8},
+    pylons:{ A:[0,2.5], E:[-6.5,2.5], B:[6.5,2.5], D:[-6.5,-2.5], C:[6.5,-2.5] },
+    drawPath:()=>{ rectOutlineG(13,5,0xffffff,0.023); },
+    stageNames:['① 離陸・上昇','② ホバリング','③ A地点','④ B地点','⑤ C地点','⑥ D地点','⑦ E地点','⑧ A地点へ戻る','⑨ 中央へ戻る','⑩ 着陸'],
+    steps:[
+      {type:'ascend',from:[0,0,0],target:[0,3.5,0],text:'離陸し、高度3.5mまで上昇してください。'},
+      {type:'hover',from:[0,3.5,0],target:[0,3.5,0],hold:5,text:'その位置で5秒間ホバリングしてください。'},
+      {type:'move',from:[0,3.5,0],target:[0,3.5,2.5],text:'A地点（手前中央）へ移動してください。機首は進行方向へ。'},
+      {type:'move',from:[0,3.5,2.5],target:[6.5,3.5,2.5],text:'B地点（右手前）へ移動してください。'},
+      {type:'move',from:[6.5,3.5,2.5],target:[6.5,3.5,-2.5],text:'C地点（右奥）へ移動してください。'},
+      {type:'move',from:[6.5,3.5,-2.5],target:[-6.5,3.5,-2.5],text:'D地点（左奥）へ移動してください。'},
+      {type:'move',from:[-6.5,3.5,-2.5],target:[-6.5,3.5,2.5],text:'E地点（左手前）へ移動してください。'},
+      {type:'move',from:[-6.5,3.5,2.5],target:[0,3.5,2.5],text:'A地点（手前中央）へ戻ってください。'},
+      {type:'move',from:[0,3.5,2.5],target:[0,3.5,0],text:'離着陸地点（中央）の真上へ戻ってください。'},
+      {type:'land',from:[0,3.5,0],target:[0,0,0],text:'ゆっくり高度を下げ、離着陸円内に着陸してください。'},
+      {type:'done',from:null,target:null,text:'お疲れさまでした。スクエア飛行の流れは以上です。'}
+    ]
+  },
+  figure8: {
+    name:'8の字飛行', alt:1.5, timeLimit:480, flight:'GPS', H:[0,0],
+    // 区画は2円の外接矩形(10×5)を基準に長方形。内側(円の内外を含む)はすべて飛行可。
+    dist:(x,z)=>{ const dx=Math.abs(x)-5.0, dz=Math.abs(z)-2.5;
+      return (dx<=0&&dz<=0)?0:Math.hypot(Math.max(dx,0),Math.max(dz,0)); },
+    exempt:()=>false,
+    corridor:null,
+    pylons:{},
+    discs:[[-2.5,0],[2.5,0]],   // 円中心の目印(黄ディスク)
+    labels:[{t:'左円中心',x:-2.5,z:1.4,w:2.8},{t:'右円中心',x:2.5,z:1.4,w:2.8}],
+    drawPath:()=>{ circleOutlineG(2.5,0,2.5,0xffffff,0.023); circleOutlineG(-2.5,0,2.5,0xffffff,0.023); },
+    stageNames:['① 離陸・上昇','② ホバリング','③ 右円(時計回り)','④ 右端','⑤ 手前','⑥ 中央通過','⑦ 左円(反時計回り)','⑧ 左端','⑨ 手前','⑩ 中央へ','⑪ 着陸'],
+    steps:[
+      {type:'ascend',from:[0,0,0],target:[0,1.5,0],text:'離陸し、高度1.5mまで上昇してください。'},
+      {type:'hover',from:[0,1.5,0],target:[0,1.5,0],hold:5,text:'5秒間ホバリングしてください。'},
+      {type:'move',from:[0,1.5,0],target:[2.5,1.5,-2.5],text:'右の円を時計回りに。機首を進行方向に向け、まず右奥へ進んでください。'},
+      {type:'move',from:[2.5,1.5,-2.5],target:[5,1.5,0],text:'右の円を時計回りに周回（右端へ）。'},
+      {type:'move',from:[5,1.5,0],target:[2.5,1.5,2.5],text:'右の円を時計回りに周回（手前へ）。'},
+      {type:'move',from:[2.5,1.5,2.5],target:[0,1.5,0],text:'中央（交差点）を通過してください。'},
+      {type:'move',from:[0,1.5,0],target:[-2.5,1.5,-2.5],text:'左の円を反時計回りに。左奥へ進んでください。'},
+      {type:'move',from:[-2.5,1.5,-2.5],target:[-5,1.5,0],text:'左の円を反時計回りに周回（左端へ）。'},
+      {type:'move',from:[-5,1.5,0],target:[-2.5,1.5,2.5],text:'左の円を反時計回りに周回（手前へ）。'},
+      {type:'move',from:[-2.5,1.5,2.5],target:[0,1.5,0],text:'中央へ戻ってください。'},
+      {type:'land',from:[0,1.5,0],target:[0,0,0],text:'ゆっくり着陸してください。'},
+      {type:'done',from:null,target:null,text:'お疲れさまでした。8の字飛行の流れは以上です。'}
+    ]
+  },
+  abnormal: {
+    name:'異常事態における飛行', alt:3.5, timeLimit:360, flight:'ATTI', H:[0,0],
+    // 区画は直線(x±6.5)とH(z=0)を含む矩形を基準に長方形。内側はすべて飛行可。
+    dist:(x,z)=>{ const dx=Math.max(Math.abs(x)-6.5,0), dz=Math.max(Math.max(-z, z-2.5),0); return Math.hypot(dx,dz); },
+    exempt:(x,z)=> Math.abs(x)<=1.2 && z>=-1.2 && z<=2.8,
+    corridor:{w:2.4,d:3.4,x:0,z:0.9},
+    pylons:{ E:[-6.5,2.5], A:[0,2.5], B:[6.5,2.5] },
+    drawPath:()=>{ lineG(-6.5,2.5,6.5,2.5,0xffffff,0.023); lineG(0,0,0,2.5,0x88ccff,0.023); },
+    stageNames:['① 離陸・上昇','② ホバリング','③ A地点','④ 右へ側方移動(B)','⑤ 左へ側方移動(E)','⑥ A地点へ','⑦ 緊急ホバリング','⑧ 緊急着陸'],
+    steps:[
+      {type:'ascend',from:[0,0,0],target:[0,3.5,0],text:'【ATTIモード】離陸し、高度3.5mまで上昇してください。'},
+      {type:'hover',from:[0,3.5,0],target:[0,3.5,0],hold:5,text:'5秒間ホバリングしてください。'},
+      {type:'move',from:[0,3.5,0],target:[0,3.5,2.5],text:'A地点（前方中央）へ。機首は前方に固定したまま。'},
+      {type:'move',from:[0,3.5,2.5],target:[6.5,3.5,2.5],text:'機首を前方に向けたまま、右（B地点）へ側方移動してください。'},
+      {type:'move',from:[6.5,3.5,2.5],target:[-6.5,3.5,2.5],text:'そのまま左（E地点）へ側方移動してください。'},
+      {type:'move',from:[-6.5,3.5,2.5],target:[0,3.5,2.5],text:'A地点（中央）へ戻ってください。'},
+      {type:'hover',from:[0,3.5,2.5],target:[0,3.5,2.5],hold:3,text:'緊急事態発生。その場でホバリングしてください。'},
+      {type:'land',from:[0,3.5,2.5],target:[0,0,0],text:'緊急着陸。離着陸地点（H）へ最短で移動し、着陸してください。'},
+      {type:'done',from:null,target:null,text:'お疲れさまでした。異常事態における飛行の流れは以上です。'}
+    ]
+  }
+};
+let currentCourse = COURSE_DEFS.square;
+function loadCourse(key){
+  currentCourse = COURSE_DEFS[key];
+  while(courseGroup.children.length) courseGroup.remove(courseGroup.children[0]);
+  buildZoneTexture(currentCourse.dist);
+  if (currentCourse.corridor){ const c=currentCourse.corridor;
+    const m=new THREE.Mesh(new THREE.PlaneGeometry(c.w,c.d),
+      new THREE.MeshBasicMaterial({color:0x2980e0,transparent:true,opacity:0.5,depthWrite:false}));
+    m.rotation.x=-Math.PI/2; m.position.set(c.x,0.016,c.z); courseGroup.add(m); }
+  currentCourse.drawPath();
+  const ring=new THREE.Mesh(new THREE.RingGeometry(0.9,1.0,48),
+    new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide,transparent:true,opacity:0.95,depthWrite:false}));
+  ring.rotation.x=-Math.PI/2; ring.position.set(currentCourse.H[0],0.024,currentCourse.H[1]); courseGroup.add(ring);
+  addHelipadH(currentCourse.H[0], currentCourse.H[1]);
+  for (const [label,p] of Object.entries(currentCourse.pylons)) addPylon(label,p[0],p[1]);
+  if (currentCourse.discs) currentCourse.discs.forEach(d=>{
+    const m=new THREE.Mesh(new THREE.CircleGeometry(0.85,28),
+      new THREE.MeshBasicMaterial({color:0xe8c84a,transparent:true,opacity:0.5,depthWrite:false}));
+    m.rotation.x=-Math.PI/2; m.position.set(d[0],0.018,d[1]); courseGroup.add(m); });
+  if (currentCourse.labels) currentCourse.labels.forEach(l=> groundLabel(l.t,l.x,l.z,l.w,'#ffffff'));
+  STEPS = currentCourse.steps.map(s=>({ ...s,
+    from:s.from?new THREE.Vector3(...s.from):null,
+    target:s.target?new THREE.Vector3(...s.target):null }));
+  exam.active=false; exam.idx=0; exam.hold=0; resetScore(); lastZone=0;
+  const tl = (typeof effTimeLimit==='function') ? effTimeLimit(key) : currentCourse.timeLimit;
+  exam.timeLimit=tl; exam.timeLeft=tl;
+  setFlight(currentCourse.flight);
+  if (typeof guideLine!=='undefined'){ guideLine.visible=false; targetMark.visible=false; dropLine.visible=false; }
+  if (typeof buildStageOptions==='function') buildStageOptions();
+  const it=document.getElementById('instrText'); if(it) it.textContent='種目: '+currentCourse.name+' — 「▶実地審査開始」で案内します。';
+  const sb=document.getElementById('instrSub'); if(sb) sb.textContent='';
+}
+
+// 操縦者の目印(手前 8.5m) ※人型シルエット・透明度25%(opacity 0.25)
+const pilot = new THREE.Group();
+const pilotMat = new THREE.MeshStandardMaterial({ color:0x224488, transparent:true, opacity:0.25 });
+function pilotPart(geo,x,y,z){ const m=new THREE.Mesh(geo,pilotMat); m.position.set(x,y,z); pilot.add(m); return m; }
+pilotPart(new THREE.BoxGeometry(0.14,0.78,0.16), -0.1,0.4,0);   // 左脚
+pilotPart(new THREE.BoxGeometry(0.14,0.78,0.16),  0.1,0.4,0);   // 右脚
+pilotPart(new THREE.BoxGeometry(0.38,0.6,0.22),   0,1.1,0);     // 胴
+pilotPart(new THREE.BoxGeometry(0.1,0.55,0.12),  -0.27,1.12,0); // 左腕
+pilotPart(new THREE.BoxGeometry(0.1,0.55,0.12),   0.27,1.12,0); // 右腕
+pilotPart(new THREE.SphereGeometry(0.15,16,16),   0,1.6,0);     // 頭
+pilot.position.set(0,0,8.5); scene.add(pilot);
+
+// パイロン/コースは loadCourse() が種目に応じて courseGroup に生成する。
+
+// ---- 機体モデル (DJI Mavic 3 風) ----
+const drone = new THREE.Group();
+const grayMat = new THREE.MeshStandardMaterial({ color:0x4a4f57, metalness:0.5, roughness:0.5 });
+const darkMat = new THREE.MeshStandardMaterial({ color:0x23262b, metalness:0.45, roughness:0.6 });
+const redMat  = new THREE.MeshStandardMaterial({ color:0xd9342b, metalness:0.3, roughness:0.55 });
+
+// 胴体: 丸みのある扁平ポッド(楕円体)
+const bodyMain = new THREE.Mesh(new THREE.SphereGeometry(0.5,24,16), grayMat);
+bodyMain.scale.set(0.16,0.075,0.27); bodyMain.castShadow=true; drone.add(bodyMain);
+// 上面のなだらかなドーム
+const dome = new THREE.Mesh(new THREE.SphereGeometry(0.5,24,12,0,Math.PI*2,0,Math.PI/2), grayMat);
+dome.scale.set(0.13,0.07,0.18); dome.position.set(0,0.02,0.02); drone.add(dome);
+// 機首側を赤く(前後識別)
+const noseCap = new THREE.Mesh(new THREE.SphereGeometry(0.5,20,14), redMat);
+noseCap.scale.set(0.135,0.072,0.1); noseCap.position.set(0,0,-0.19); noseCap.castShadow=true; drone.add(noseCap);
+// 下から見ても前方が判る赤マーカー(発光色・照明非依存)
+const underFront = new THREE.Mesh(new THREE.BoxGeometry(0.17,0.01,0.11),
+  new THREE.MeshBasicMaterial({ color:0xff2a1a }));
+underFront.position.set(0,-0.052,-0.1); drone.add(underFront);
+
+// ジンバルカメラ(前方下) + 2眼レンズ
+const gimbal = new THREE.Mesh(new THREE.BoxGeometry(0.085,0.07,0.07), darkMat);
+gimbal.position.set(0,-0.04,-0.2); gimbal.castShadow=true; drone.add(gimbal);
+[-0.02,0.02].forEach(lx=>{
+  const lens=new THREE.Mesh(new THREE.CylinderGeometry(0.017,0.017,0.022,16),
+    new THREE.MeshStandardMaterial({ color:0x0a0a0a, metalness:0.7, roughness:0.2 }));
+  lens.rotation.x=Math.PI/2; lens.position.set(lx,-0.045,-0.235); drone.add(lens);
+});
+
+// アーム + モーター + プロペラ (前は前方外, 後は後方外へ伸びる)
+function strut(a,b,r,mat){
+  const va=new THREE.Vector3(...a), vb=new THREE.Vector3(...b), len=va.distanceTo(vb);
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,8), mat);
+  m.position.copy(va).add(vb).multiplyScalar(0.5);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), vb.clone().sub(va).normalize());
+  m.castShadow=true; drone.add(m); return m;
+}
+const props = [];
+const motors = [
+  { p:[-0.21,0.0,-0.15], front:true },  { p:[0.21,0.0,-0.15], front:true },   // 前左/前右
+  { p:[-0.23,0.0, 0.19], front:false }, { p:[0.23,0.0, 0.19], front:false }   // 後左/後右
+];
+motors.forEach(mo=>{
+  const tip=mo.p, root=[tip[0]*0.42, 0, tip[2]*0.42];
+  strut(root, tip, 0.012, darkMat);                                   // アーム
+  const motor=new THREE.Mesh(new THREE.CylinderGeometry(0.022,0.022,0.03,14), darkMat);
+  motor.position.set(tip[0], tip[1]+0.02, tip[2]); motor.castShadow=true; drone.add(motor);
+  const prop=new THREE.Mesh(new THREE.BoxGeometry(0.26,0.005,0.02),
+    new THREE.MeshStandardMaterial({ color:mo.front?0xe05a4a:0xcfd3d8, transparent:true, opacity:0.55 }));
+  prop.position.set(tip[0], tip[1]+0.045, tip[2]); prop.castShadow=true; drone.add(prop); props.push(prop);
+  // プロペラモーター下のLED灯火(前=緑 / 後=赤、夜間に視認)
+  const led=new THREE.Mesh(new THREE.SphereGeometry(0.021,10,10),
+    new THREE.MeshBasicMaterial({ color: mo.front?0xffffff:0xff3344 }));
+  led.position.set(tip[0], tip[1]-0.018, tip[2]); drone.add(led);
+});
+drone.scale.setScalar(1.5); // 視認性向上のため機体を150%拡大
+scene.add(drone);
+// 機体直下の疑似影(上昇に応じてサイズ可変。5m上昇で75%スケール)
+drone.traverse(o=>{ o.castShadow=false; o.layers.set(1); }); // 実影は使わない / 機体はレイヤー1(FPVには映さない)
+const shadowBlob = new THREE.Mesh(new THREE.CircleGeometry(0.5, 28),
+  new THREE.MeshBasicMaterial({ color:0x0a1505, transparent:true, opacity:0.34, depthWrite:false }));
+shadowBlob.rotation.x = -Math.PI/2; shadowBlob.position.y = 0.03; scene.add(shadowBlob);
+
+// ---- 状態 ----
+const state = { pos:new THREE.Vector3(0,0,0), vel:new THREE.Vector3(0,0,0),
+                yaw:0, yawRate:0, flight:'GPS', stickMode:2 };
+function reset(){ state.pos.set(0,0,0); state.vel.set(0,0,0); state.yaw=0; state.yawRate=0; }
+
+// ====================== 講師役ナビ + 空中ガイドライン ======================
+// 注: 本試作は採点しない。検定の「流れ」を講師役が促し、推奨経路を破線で示す。
+let STEPS = [];   // 現在の種目のステップ(loadCourseで設定)
+const exam = { active:false, idx:0, hold:0, voice:true, showGuide:true,
+               timeLimit:480, timeLeft:480,
+               // --- 採点(P2) ---
+               score:100, deducted:0, log:[], failed:false,
+               graceUsed:false, graceActive:false, graceT:0, dangerT:0, descentPeak:0 };
+function resetScore(){ exam.score=100; exam.deducted=0; exam.log=[]; exam.failed=false;
+  exam.graceUsed=false; exam.graceActive=false; exam.graceT=0; exam.dangerT=0; exam.descentPeak=0; }
+function fmtTime(s){ s=Math.max(0,Math.ceil(s)); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
+
+// 破線ガイドライン
+const guideMat = new THREE.LineDashedMaterial({ color:0x37e0ff, dashSize:0.4, gapSize:0.25, linewidth:2 });
+const guideLine = new THREE.Line(new THREE.BufferGeometry(), guideMat);
+guideLine.visible = false; scene.add(guideLine);
+// 目標マーカー(空中のリング)
+const targetMark = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.06, 8, 32),
+  new THREE.MeshBasicMaterial({ color:0x37e0ff }));
+targetMark.visible = false; scene.add(targetMark);
+// 目標から地面への垂線(目安)
+const dropMat = new THREE.LineDashedMaterial({ color:0x37e0ff, dashSize:0.25, gapSize:0.25, opacity:0.5, transparent:true });
+const dropLine = new THREE.Line(new THREE.BufferGeometry(), dropMat);
+dropLine.visible=false; scene.add(dropLine);
+
+function setGuideline(from, to){
+  if (!from || !to || !exam.showGuide){ guideLine.visible=false; targetMark.visible=false; dropLine.visible=false; return; }
+  guideLine.geometry.setFromPoints([from, to]); guideLine.computeLineDistances(); guideLine.visible=true;
+  targetMark.position.copy(to); targetMark.visible = (to.y>0.5);
+  // 通過ゲートの軸を進行方向(from→to)に合わせ、機体に正対させる
+  const gdir = to.clone().sub(from); gdir.y=0;
+  if (gdir.lengthSq()>1e-5){ gdir.normalize(); targetMark.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1), gdir); }
+  // 目標の真下への垂線
+  dropLine.geometry.setFromPoints([to, new THREE.Vector3(to.x,0.02,to.z)]); dropLine.computeLineDistances();
+  dropLine.visible = (to.y>0.5);
+}
+// 読み上げ用に表記を整える: 「数字+m」→「メートル」、「機首」→「きしゅ」
+function speechText(t){
+  return t.replace(/反時計回り/g,'はんとけいまわり')
+          .replace(/時計回り/g,'とけいまわり')
+          .replace(/ATTI/g,'エーティーティーアイ')
+          .replace(/機首/g,'きしゅ')
+          .replace(/(\d+(?:\.\d+)?)\s*m(?![A-Za-z])/g,'$1メートル');
+}
+function speak(t){
+  if (!exam.voice || !window.speechSynthesis) return;
+  try { window.speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(speechText(t)); u.lang='ja-JP'; u.rate=1.0;
+    window.speechSynthesis.speak(u); } catch(e){}
+}
+function announce(step){
+  document.getElementById('instrText').textContent = '講師: ' + step.text;
+  if (step.type!=='done') speak(step.text);
+  setGuideline(step.from, step.target);
+}
+function startExam(){
+  reset(); resetScore(); exam.active=true; exam.idx=0; exam.hold=0; exam.timeLeft=exam.timeLimit; lastZone=0;
+  announce(STEPS[0]);
+}
+function stopExam(){
+  exam.active=false; guideLine.visible=false; targetMark.visible=false; dropLine.visible=false;
+  document.getElementById('instrText').textContent = '「実地審査開始」を押すと講師役が流れを案内します。';
+  document.getElementById('instrSub').textContent = '';
+}
+function nextStep(){
+  exam.idx++; exam.hold=0;
+  if (exam.idx >= STEPS.length){ exam.active=false; return; }
+  if (STEPS[exam.idx].type==='done'){ finalize(); return; }  // 全工程完了 → 合否判定
+  announce(STEPS[exam.idx]);
+}
+function horizDist(p){ return Math.hypot(state.pos.x - p.x, state.pos.z - p.z); }
+
+// ====================== 環境風 ======================
+// 風向きは「風が吹いてくる方角」。Three座標で 北=-z(奥), 南=+z(手前), 東=+x(右), 西=-x(左)。
+const WIND_DIRS = [
+  { l:'北',   x:0,  z:1 },  { l:'北東', x:-1, z:1 },
+  { l:'東',   x:-1, z:0 },  { l:'南東', x:-1, z:-1 },
+  { l:'南',   x:0,  z:-1 }, { l:'南西', x:1,  z:-1 },
+  { l:'西',   x:1,  z:0 },  { l:'北西', x:1,  z:1 }
+];
+const wind = { level:0, dir:0, vec:new THREE.Vector3() };
+function updateWindVec(){
+  const d = WIND_DIRS[wind.dir]; const v = new THREE.Vector3(d.x,0,d.z);
+  if (v.length()>0) v.normalize();
+  wind.vec.copy(v).multiplyScalar(wind.level); // level(0..9) を風速[m/s]とみなす
+}
+
+// ====================== 減点ホイッスル + 区画判定(簡易プレビュー) ======================
+let audioCtx = null;
+function ensureAudio(){ try { if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  if (audioCtx && audioCtx.state==='suspended') audioCtx.resume(); } catch(e){} }
+const FOURTH = Math.pow(2, 5/12); // 完全4度 ≈ 1.3348 (キーを4度上げる)
+function playWhistle(times=1){  // ★引数なし呼び出しでも1回鳴るように既定値1
+  ensureAudio(); if (!audioCtx) return;
+  const t0 = audioCtx.currentTime; const DUR = 0.7; // 減点ホイッスル: 0.7秒再生
+  for (let i=0;i<times;i++){
+    const st = t0 + i*(DUR+0.06);
+    const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
+    osc.type='square';
+    osc.frequency.setValueAtTime(2100*FOURTH, st);
+    osc.frequency.linearRampToValueAtTime(2500*FOURTH, st+0.08); // 軽いトリル
+    osc.frequency.linearRampToValueAtTime(2100*FOURTH, st+0.16);
+    g.gain.setValueAtTime(0.0001, st); g.gain.exponentialRampToValueAtTime(0.25, st+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, st+DUR);
+    osc.connect(g); g.connect(audioCtx.destination); osc.start(st); osc.stop(st+DUR+0.02);
+  }
+}
+// 不合格ブザー: 低く耳障りな音を1秒
+function playBuzzer(){
+  ensureAudio(); if (!audioCtx) return;
+  const st = audioCtx.currentTime, DUR = 1.0;
+  const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
+  osc.type='sawtooth'; osc.frequency.setValueAtTime(180, st);
+  const lfo = audioCtx.createOscillator(), lfoG = audioCtx.createGain(); // 振幅を揺らしてブザー感
+  lfo.type='square'; lfo.frequency.setValueAtTime(28, st); lfoG.gain.setValueAtTime(0.1, st);
+  lfo.connect(lfoG); lfoG.connect(g.gain);
+  g.gain.setValueAtTime(0.22, st); g.gain.setValueAtTime(0.22, st+DUR-0.06);
+  g.gain.linearRampToValueAtTime(0.0001, st+DUR);
+  osc.connect(g); g.connect(audioCtx.destination);
+  osc.start(st); osc.stop(st+DUR); lfo.start(st); lfo.stop(st+DUR);
+}
+// 区画判定: 経路からの距離で判定。±1.5m=飛行可 / 1.5〜2.5m=減点 / 2.5m超=不合格。
+function zoneOf(x,z){
+  if (currentCourse.exempt(x,z)) return 0;     // 種目ごとの無効区間(例: H↔A通路)
+  const d = currentCourse.dist(x,z);
+  if (d<=1.5) return 0;
+  if (d<=2.5) return 1;
+  return 2;
+}
+
+// ====================== 採点(100点持ち点・減点式・70点合格) ======================
+function deduct(points, reason){
+  if (!exam.active) return;
+  const t = fmtTime(exam.timeLimit - exam.timeLeft); // 経過時間
+  if (points==='fail'){
+    exam.failed = true; exam.deducted = 100; exam.score = 0;   // 不合格 → 持ち点0
+    exam.log.push({t, reason, pts:'不'});
+    playBuzzer(); finalize(reason); return;
+  }
+  exam.deducted += points;                        // 減点を加算
+  exam.score = Math.max(0, 100 - exam.deducted);  // 持ち点 = 100 − 合計減点(ライブ反映)
+  exam.log.push({t, reason, pts:'-'+points});
+  const sub=document.getElementById('instrSub');
+  if (sub) sub.textContent = `△ ${reason}（-${points}点）／ 合計減点 ${exam.deducted}点 ・ 持ち点 ${exam.score}点`;
+}
+function finalize(failReason){
+  exam.active=false; guideLine.visible=false; targetMark.visible=false; dropLine.visible=false;
+  const it=document.getElementById('instrText'), sub=document.getElementById('instrSub');
+  if (exam.failed){
+    if(it) it.textContent = `判定: 不合格（${failReason||'規定違反で中止'}）`; speak('不合格です。');
+  } else {
+    const pass = exam.score>=70;
+    if(it) it.textContent = `判定: ${pass?'合格':'不合格'}　持ち点 ${exam.score}点（合格ライン70点）`;
+    speak(pass?'合格です。':'不合格です。');
+  }
+  if (sub) sub.textContent = exam.log.length
+    ? ('減点: '+exam.log.map(l=>`${l.t} ${l.reason} ${l.pts}`).join(' ／ '))
+    : '減点なし（満点）';
+}
+
+let lastZone = 0;
+function checkZones(dt){
+  if (!exam.active){ lastZone = 0; return; }
+  if (state.pos.y < 0.3){ lastZone = zoneOf(state.pos.x, state.pos.z); return; } // 地上付近は判定外
+  const z = zoneOf(state.pos.x, state.pos.z);
+  if (z===2){ deduct('fail','不合格区画に進入'); lastZone=z; return; }
+  if (z===1){
+    if (lastZone===0){                       // 減点区画へ進入した瞬間
+      playWhistle();
+      if (!exam.graceUsed){ exam.graceActive=true; exam.graceT=0; }   // 初回は猶予
+      else deduct(5,'飛行経路逸脱');                                   // 2回目以降は即減点
+    }
+    if (exam.graceActive){ exam.graceT += dt;
+      if (exam.graceT > 2){ deduct(5,'飛行経路逸脱'); exam.graceActive=false; exam.graceUsed=true; } }
+  } else {                                    // 飛行可へ復帰
+    if (exam.graceActive){ exam.graceActive=false; exam.graceUsed=true; } // 初回猶予で復帰→減点なし
+  }
+  lastZone = z;
+}
+
+function examUpdate(dt){
+  const sub = document.getElementById('instrSub');
+  if (!exam.active){ return; }
+  const step = STEPS[exam.idx];
+  if (step.type==='done'){ sub.textContent=''; return; }
+  // 制限時間カウントダウン。超過で不合格・中止。
+  exam.timeLeft -= dt;
+  if (exam.timeLeft <= 0){ exam.timeLeft = 0; deduct('fail','制限時間超過'); return; }
+  // 危険な速度(概ね5m/s超を一定時間)→ 不合格
+  const spd = Math.hypot(state.vel.x, state.vel.z);
+  if (spd > 5.0){ exam.dangerT += dt; if (exam.dangerT > 0.5){ deduct('fail','危険な速度(5m/s超)'); return; } }
+  else exam.dangerT = 0;
+  // 着地時の衝撃判定用に降下速度のピークを記録
+  if (state.pos.y < 1.0) exam.descentPeak = Math.min(exam.descentPeak, state.vel.y);
+  else exam.descentPeak = 0;
+
+  const hd = step.target ? horizDist(step.target) : 0;
+  const altErr = step.target ? Math.abs(state.pos.y - step.target.y) : 0;
+
+  if (step.type==='ascend'){
+    sub.textContent = `高度 ${state.pos.y.toFixed(1)} / ${currentCourse.alt.toFixed(1)} m`;
+    if (state.pos.y >= currentCourse.alt-0.2) nextStep();
+  } else if (step.type==='hover'){
+    const inPlace = hd < 0.8 && altErr < 0.35;
+    if (inPlace) exam.hold += dt; else exam.hold = 0;
+    sub.textContent = `ホバリング ${exam.hold.toFixed(1)} / ${step.hold.toFixed(1)} 秒` + (inPlace?'':'（中央上空で静止）');
+    if (exam.hold >= step.hold) nextStep();
+  } else if (step.type==='move'){
+    sub.textContent = `目標まで ${hd.toFixed(1)} m`;
+    if (hd < 0.6 && altErr < 0.5) nextStep();
+  } else if (step.type==='land'){
+    sub.textContent = `着陸地点まで ${hd.toFixed(1)} m / 高度 ${state.pos.y.toFixed(1)} m`;
+    if (hd < 1.0 && state.pos.y <= 0.12){
+      if (exam.descentPeak < -1.5) deduct(5,'離着陸不良(接地衝撃)');
+      nextStep();
+    }
+  }
+}
+
+// ====================== 入力 (割り当て可能) ======================
+// 各操作 → どの軸を使うか + 反転。プリセット(モード2/1)で一括設定でき、学習で個別上書き。
+const PRESETS = {
+  // モード2: スロットル=軸1 / エレベーター=軸2 / ラダー=軸3 / エルロン=軸0
+  2: { throttle:{axis:1,invert:false}, pitch:{axis:2,invert:false}, yaw:{axis:3,invert:false}, roll:{axis:0,invert:false} },
+  // モード1: スロットル=軸2 / エレベーター=軸1 / ラダー=軸3 / エルロン=軸0 (スロットル・エレベーターの反転は解除)
+  1: { throttle:{axis:2,invert:false}, pitch:{axis:1,invert:false}, yaw:{axis:3,invert:false}, roll:{axis:0,invert:false} }
+};
+const FN_LABELS = { throttle:'スロットル(上下)', pitch:'エレベーター(前後)', yaw:'ラダー(ヨー)', roll:'エルロン(左右)' };
+let mapping = JSON.parse(JSON.stringify(PRESETS[2]));
+// localStorage(ローカルHTMLなので保存可)
+try { const s = localStorage.getItem('p0_mapping_v2'); if (s) mapping = JSON.parse(s); } catch(e){}
+function saveMapping(){ try { localStorage.setItem('p0_mapping_v2', JSON.stringify(mapping)); } catch(e){} }
+function loadPreset(m){ mapping = JSON.parse(JSON.stringify(PRESETS[m])); state.stickMode = m; saveMapping(); buildFnRows();
+  document.getElementById('hStick').textContent = 'モード'+m;
+  const bs=document.getElementById('btnStick'); if(bs) bs.textContent='モード'+m; } // 選択中モードを表示
+
+const keys = {};
+window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true;
+  if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase())) e.preventDefault();
+  if (!e.repeat){
+    if (e.key === 'Enter'){ ensureAudio(); startExam(); setPanelCollapsed(true); }   // リターン=実地審査開始
+    else if (e.key === ' '){ stopExam(); }                                            // スペース=停止
+  }
+});
+window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+function dz(v){ return Math.abs(v) < CFG.deadzone ? 0 : v; }
+
+let learnTarget = null, learnBase = null;
+function getPad(){ const pads = navigator.getGamepads ? navigator.getGamepads() : []; for (const p of pads) if (p) return p; return null; }
+
+function axisVal(pad, fn){
+  if (!pad) return 0;
+  const m = mapping[fn]; let v = pad.axes[m.axis] || 0;
+  if (m.invert) v = -v; return dz(v);
+}
+
+function getCommands(){
+  const pad = getPad();
+  let throttle = axisVal(pad,'throttle'), pitch = axisVal(pad,'pitch'),
+      yaw = axisVal(pad,'yaw'), roll = axisVal(pad,'roll');
+  // キーボード(操作単位で直接)
+  if (keys['w']) throttle += 1; if (keys['s']) throttle -= 1;
+  if (keys['arrowup']) pitch += 1; if (keys['arrowdown']) pitch -= 1;
+  if (keys['d']) yaw += 1; if (keys['a']) yaw -= 1;
+  if (keys['arrowright']) roll += 1; if (keys['arrowleft']) roll -= 1;
+  const cl = v => Math.max(-1,Math.min(1,v));
+  return { throttle:cl(throttle), pitch:cl(pitch), yaw:cl(yaw), roll:cl(roll) };
+}
+
+// 軸4=実地審査開始 / 軸5=リセット (スイッチ的な軸: 0.5超への立ち上がりで1回発火)
+let axBtnPrev = { a4:false, a5:false };
+function pollAxisButtons(){
+  const pad = getPad(); if (!pad) return;
+  const on4 = (pad.axes[4]||0) > 0.5, on5 = (pad.axes[5]||0) > 0.5;
+  if (on4 && !axBtnPrev.a4){ ensureAudio(); startExam(); setPanelCollapsed(true); }                 // 軸4 → 実地審査開始
+  if (on5 && !axBtnPrev.a5){ reset(); if (exam.active){ exam.idx=0; exam.hold=0; announce(STEPS[0]); } } // 軸5 → リセット
+  axBtnPrev.a4 = on4; axBtnPrev.a5 = on5;
+}
+
+// ---- 物理 ----
+function update(dt){
+  const cmd = getCommands();
+  const onGround = state.pos.y <= 0.02;            // 接地判定(地上ではスロットルのみ反応)
+  const yawTarget = onGround ? 0 : -cmd.yaw * CFG.maxYawRate; // スティック右で右旋回
+  state.yawRate += (yawTarget - state.yawRate) * Math.min(1, dt/CFG.yawTau);
+  if (!onGround) state.yaw += state.yawRate * dt;
+  const fwd = new THREE.Vector3(-Math.sin(state.yaw),0,-Math.cos(state.yaw));
+  const right = new THREE.Vector3(Math.cos(state.yaw),0,-Math.sin(state.yaw));
+  const target = new THREE.Vector3();
+  target.addScaledVector(fwd, cmd.pitch*CFG.maxHorizontalSpeed);
+  target.addScaledVector(right, cmd.roll*CFG.maxHorizontalSpeed);
+  const vyTarget = cmd.throttle>=0 ? cmd.throttle*CFG.maxAscent : cmd.throttle*CFG.maxDescent;
+
+  if (state.flight==='GPS') {
+    const k = Math.min(1, dt/CFG.velTau);
+    state.vel.x += (target.x-state.vel.x)*k;
+    state.vel.z += (target.z-state.vel.z)*k;
+    state.vel.y += (vyTarget-state.vel.y)*Math.min(1, dt/0.3);
+    state.vel.x += (Math.random()-0.5)*CFG.gpsDrift*dt;
+    state.vel.z += (Math.random()-0.5)*CFG.gpsDrift*dt;
+    // GPSは位置保持で風を概ね相殺するが、強風時はわずかに流される
+    state.vel.x += wind.vec.x*0.10*dt; state.vel.z += wind.vec.z*0.10*dt;
+  } else {
+    const accel = 6.0;
+    state.vel.x += target.x/CFG.maxHorizontalSpeed*accel*dt;
+    state.vel.z += target.z/CFG.maxHorizontalSpeed*accel*dt;
+    state.vel.y += (vyTarget-state.vel.y)*Math.min(1, dt/0.3);
+    // ATTI: 入力が無いと風速度へ流される + ガスト
+    const kw = Math.min(1, dt/1.6);
+    state.vel.x += (wind.vec.x - state.vel.x)*kw + (Math.random()-0.5)*CFG.attiGust*dt;
+    state.vel.z += (wind.vec.z - state.vel.z)*kw + (Math.random()-0.5)*CFG.attiGust*dt;
+  }
+  // 接地時は水平移動しない(入力・風があっても前後左右に動かない)。スロットルのみ反応。
+  if (onGround){ state.vel.x = 0; state.vel.z = 0; }
+  state.pos.addScaledVector(state.vel, dt);
+  if (state.pos.y <= 0){ state.pos.y = 0; if (state.vel.y<0) state.vel.y = 0; }
+  drone.position.copy(state.pos);
+  drone.rotation.y = state.yaw; drone.rotation.z = -cmd.roll*0.18; drone.rotation.x = cmd.pitch*0.18;
+}
+
+// ---- カメラ ----
+let camMode = 0;
+const camCfg = { h:3.8, dist:9.5, lookH:1.0 }; // 視点パラメータ(スライダーで調整)
+function updateCamera(){
+  if (camMode===0){ camera.position.set(0, camCfg.h, camCfg.dist); // パラメータで調整可
+    camera.lookAt(state.pos.x*0.15, camCfg.lookH, 0.5); }          // 手前(A-B/E-A)も画面に収める
+  else { const back=new THREE.Vector3(Math.sin(state.yaw),0,Math.cos(state.yaw));
+    camera.position.copy(state.pos).addScaledVector(back,4).add(new THREE.Vector3(0,2,0));
+    camera.lookAt(state.pos); }
+}
+
+// ---- 限定変更(目視外FPV / 夜間) ----
+const tmpFwd = new THREE.Vector3();
+function updateFpv(){
+  tmpFwd.set(-Math.sin(state.yaw),0,-Math.cos(state.yaw)); // 機首方向
+  // 機体カメラ(ジンバル位置から前方やや下を見る)
+  fpvCam.position.copy(state.pos).add(new THREE.Vector3(0,0.04,0)).addScaledVector(tmpFwd,0.18);
+  const look = state.pos.clone().addScaledVector(tmpFwd, 6).add(new THREE.Vector3(0,-1.3,0));
+  fpvCam.up.set(0,1,0); fpvCam.lookAt(look);
+  // 直上ナビ(真上から見下ろし、奥=-zを上に)
+  topCam.position.set(state.pos.x, 16, state.pos.z);
+  topCam.up.set(0,0,-1); topCam.lookAt(state.pos.x, 0, state.pos.z);
+}
+function effTimeLimit(key){
+  if (variation==='basic') return COURSE_DEFS[key].timeLimit;
+  if (key==='square')  return 540; // 限定変更のスクエア=9分
+  if (key==='abnormal') return 300; // 限定変更の異常事態=5分
+  return COURSE_DEFS[key].timeLimit;
+}
+function applyEnvironment(){
+  if (variation==='night'){
+    scene.background = new THREE.Color(0x0a0e16); scene.fog = new THREE.Fog(0x0a0e16, 18, 70);
+    sun.intensity = 0.12; hemi.intensity = 0.14;
+    padLight.intensity = 2.4; droneLight.intensity = 0.9;   // ヘリパッド照明・機体灯火ON
+  } else {
+    scene.background = new THREE.Color(0x87a9c4); scene.fog = new THREE.Fog(0x87a9c4, 40, 120);
+    sun.intensity = 1.0; hemi.intensity = 0.55;
+    padLight.intensity = 0.0; droneLight.intensity = 0.0;
+  }
+  renderMode = (variation==='bvlos') ? 'fpv' : 'normal';
+  document.getElementById('fpvBadge').classList.toggle('show', renderMode==='fpv');
+  document.getElementById('pip').classList.toggle('show', renderMode==='fpv');
+}
+
+// ---- HUD ----
+const elFlight=document.getElementById('hFlight'), elStick=document.getElementById('hStick'),
+      elAlt=document.getElementById('hAlt'), elSpd=document.getElementById('hSpd'),
+      elYaw=document.getElementById('hYaw'), elPos=document.getElementById('hPos'),
+      elTime=document.getElementById('hTime'), elScore=document.getElementById('hScore'),
+      elDeduct=document.getElementById('hDeduct');
+function updateHUD(){
+  const tl = exam.active ? exam.timeLeft : exam.timeLimit;
+  elTime.textContent = fmtTime(tl);
+  elTime.style.color = (exam.active && exam.timeLeft<=60) ? '#ff6b6b' : '#ffe27a';
+  elScore.textContent = exam.score;
+  elScore.style.color = exam.score<70 ? '#ff6b6b' : '#ffe27a';
+  elDeduct.textContent = exam.deducted>0 ? `（減点 −${exam.deducted}）` : '';
+  elFlight.textContent = state.flight==='GPS'?'GPS (N)':'ATTI (A)';
+  elAlt.textContent = state.pos.y.toFixed(2);
+  elSpd.textContent = Math.hypot(state.vel.x,state.vel.z).toFixed(2);
+  let deg=(-state.yaw*180/Math.PI)%360; if(deg<0)deg+=360; elYaw.textContent=Math.round(deg);
+  elPos.textContent = state.pos.x.toFixed(1)+', '+(-state.pos.z).toFixed(1);
+}
+
+// ====================== キャリブレーション画面 ======================
+const calib = document.getElementById('calib');
+const axisList = document.getElementById('axisList'), btnList = document.getElementById('btnList'),
+      fnRows = document.getElementById('fnRows'), learnMsg = document.getElementById('learnMsg');
+let calibOpen = false;
+
+function buildFnRows(){
+  fnRows.innerHTML = '';
+  ['throttle','pitch','yaw','roll'].forEach(fn => {
+    const row = document.createElement('div'); row.className='fnRow';
+    row.innerHTML =
+      `<span class="fnName">${FN_LABELS[fn]}</span>
+       <span style="font-size:11px;color:#9fb3c8;">軸</span>
+       <select data-fn="${fn}" class="axisSel"></select>
+       <label style="font-size:11px;"><input type="checkbox" data-fn="${fn}" class="invChk"> 反転</label>
+       <button class="learn" data-fn="${fn}">学習</button>
+       <span class="bar" style="max-width:90px;"><span class="mid"></span><span class="fill" data-fnbar="${fn}"></span></span>`;
+    fnRows.appendChild(row);
+  });
+  // 軸セレクトの選択肢(0..7想定)
+  fnRows.querySelectorAll('.axisSel').forEach(sel => {
+    const fn = sel.dataset.fn;
+    for (let i=0;i<8;i++){ const o=document.createElement('option'); o.value=i; o.textContent='軸 '+i; sel.appendChild(o); }
+    sel.value = mapping[fn].axis;
+    sel.onchange = () => { mapping[fn].axis = parseInt(sel.value); saveMapping(); };
+  });
+  fnRows.querySelectorAll('.invChk').forEach(chk => {
+    const fn = chk.dataset.fn; chk.checked = mapping[fn].invert;
+    chk.onchange = () => { mapping[fn].invert = chk.checked; saveMapping(); };
+  });
+  fnRows.querySelectorAll('button.learn').forEach(b => {
+    b.onclick = () => { startLearn(b.dataset.fn, b); };
+  });
+}
+function startLearn(fn, btn){
+  const pad = getPad();
+  if (!pad){ learnMsg.textContent = 'パッドが未接続です。'; return; }
+  fnRows.querySelectorAll('button.learn').forEach(x=>x.classList.remove('active'));
+  btn.classList.add('active');
+  learnTarget = fn; learnBase = pad.axes.slice();
+  learnMsg.textContent = `「${FN_LABELS[fn]}」に使うスティックを大きく動かしてください…`;
+}
+function pollLearn(){
+  if (!learnTarget) return;
+  const pad = getPad(); if (!pad || !learnBase) return;
+  let bestAxis=-1, bestDelta=0;
+  for (let i=0;i<pad.axes.length;i++){
+    const d = Math.abs((pad.axes[i]||0) - (learnBase[i]||0));
+    if (d > bestDelta){ bestDelta = d; bestAxis = i; }
+  }
+  if (bestDelta > 0.55 && bestAxis>=0){
+    mapping[learnTarget].axis = bestAxis; saveMapping();
+    learnMsg.textContent = `「${FN_LABELS[learnTarget]}」→ 軸 ${bestAxis} に割当ました。`;
+    fnRows.querySelectorAll('button.learn').forEach(x=>x.classList.remove('active'));
+    const sel = fnRows.querySelector(`.axisSel[data-fn="${learnTarget}"]`); if (sel) sel.value = bestAxis;
+    learnTarget=null; learnBase=null;
+  }
+}
+// ---- オート割り当て: 各操作を順に倒してもらい、実際の軸と向き(反転)を読み取って設定 ----
+const AUTO_STEPS = [
+  { fn:'throttle', dir:'スロットルを「上」に倒す' },
+  { fn:'yaw',      dir:'ラダー(ヨー)を「右」に倒す' },
+  { fn:'pitch',    dir:'エレベーターを「前(上)」に倒す' },
+  { fn:'roll',     dir:'エルロンを「右」に倒す' }
+];
+let autoIdx = -1, autoBase = null, autoCool = 0;
+function startAuto(){
+  const pad = getPad();
+  if (!pad){ learnMsg.textContent = 'パッドが未接続です。'; return; }
+  learnTarget = null; // 個別学習は止める
+  autoIdx = 0; autoBase = pad.axes.slice(); autoCool = 0;
+  learnMsg.textContent = `オート割り当て① ${AUTO_STEPS[0].dir}（その方向に大きく倒してください）`;
+}
+function pollAuto(dt){
+  if (autoIdx < 0) return;
+  if (autoCool > 0){ autoCool -= 0.016; return; }   // 1ステップ毎の小休止(誤検出防止)
+  const pad = getPad(); if (!pad || !autoBase) return;
+  let bestAxis=-1, bestDelta=0, bestVal=0;
+  for (let i=0;i<pad.axes.length;i++){
+    const d = (pad.axes[i]||0) - (autoBase[i]||0);
+    if (Math.abs(d) > Math.abs(bestDelta)){ bestDelta = d; bestAxis = i; bestVal = pad.axes[i]||0; }
+  }
+  if (Math.abs(bestDelta) > 0.6 && bestAxis>=0){
+    const fn = AUTO_STEPS[autoIdx].fn;
+    // 倒した方向で指令が+になるよう反転を決定(倒した時の生値が負なら反転)
+    mapping[fn] = { axis: bestAxis, invert: (bestVal < 0) };
+    autoIdx++;
+    if (autoIdx >= AUTO_STEPS.length){
+      autoIdx = -1; autoBase = null; saveMapping(); buildFnRows();
+      learnMsg.textContent = '✅ オート割り当て完了。実際の軸と向きを反映しました。';
+    } else {
+      autoBase = pad.axes.slice(); autoCool = 0.6;
+      const n = ['①','②','③','④'][autoIdx];
+      learnMsg.textContent = `オート割り当て${n} ${AUTO_STEPS[autoIdx].dir}（一度中立に戻してから倒してください）`;
+    }
+  }
+}
+function updateCalibLive(){
+  if (!calibOpen) return;
+  const pad = getPad();
+  if (!pad){ axisList.innerHTML = '<div class="axisRow"><span class="axisName">—</span><span style="color:#9fb3c8;font-size:12px">パッド未接続</span></div>';
+             btnList.innerHTML='<span style="color:#7e8ea0;font-size:11px">—</span>'; return; }
+  // 軸バー
+  let h='';
+  for (let i=0;i<pad.axes.length;i++){
+    const v = pad.axes[i]||0; const pct = Math.abs(v)*50; const left = v<0 ? (50 - pct) : 50;
+    h += `<div class="axisRow"><span class="axisName">軸 ${i}</span>
+      <span class="bar"><span class="mid"></span><span class="fill" style="left:${left}%;width:${pct}%;"></span></span>
+      <span class="val">${v.toFixed(2)}</span></div>`;
+  }
+  axisList.innerHTML = h;
+  // ボタン
+  let b='';
+  pad.buttons.forEach((btn,i)=>{ b += `<span class="padbtn ${btn.pressed?'on':''}">${i}</span>`; });
+  btnList.innerHTML = b;
+  // 各操作の解決値バー
+  const pad2 = pad;
+  ['throttle','pitch','yaw','roll'].forEach(fn=>{
+    const v = axisVal(pad2, fn); const fill = fnRows.querySelector(`.fill[data-fnbar="${fn}"]`);
+    if (fill){ const pct=Math.abs(v)*50; fill.style.left = (v<0?(50-pct):50)+'%'; fill.style.width = pct+'%'; }
+  });
+  pollLearn(); pollAuto();
+}
+
+function setPanelCollapsed(c){ const p=document.getElementById('panel'); p.classList.toggle('collapsed', c);
+  document.getElementById('panelToggle').textContent = c?'設定 ▾':'隠す ▴'; }
+document.getElementById('panelToggle').onclick = () => {
+  setPanelCollapsed(!document.getElementById('panel').classList.contains('collapsed'));
+};
+document.getElementById('btnCalib').onclick = () => { calibOpen=true; calib.classList.add('show'); };
+document.getElementById('calibClose').onclick = () => { calibOpen=false; calib.classList.remove('show'); learnTarget=null; learnMsg.textContent=''; };
+document.getElementById('presetM2').onclick = () => loadPreset(2);
+document.getElementById('presetM1').onclick = () => loadPreset(1);
+document.getElementById('autoAssign').onclick = () => startAuto();
+document.getElementById('calibClearLearn').onclick = () => { learnTarget=null; learnBase=null; autoIdx=-1; autoBase=null; learnMsg.textContent='中止しました。';
+  fnRows.querySelectorAll('button.learn').forEach(x=>x.classList.remove('active')); };
+
+// ---- パネルのボタン ----
+document.getElementById('btnStick').onclick = () => loadPreset(state.stickMode===2?1:2);
+document.getElementById('btnFlight').onclick = () => { const b=document.getElementById('btnFlight');
+  state.flight = state.flight==='GPS'?'ATTI':'GPS'; b.textContent=state.flight; b.classList.toggle('on', state.flight==='GPS'); };
+document.getElementById('btnCam').onclick = () => { camMode=camMode?0:1;
+  document.getElementById('btnCam').textContent = camMode===0?'操縦者視点':'追従視点'; };
+// カメラ視点パラメータ(スライダー)
+document.getElementById('camH').oninput = e => { camCfg.h = parseFloat(e.target.value); };
+document.getElementById('camD').oninput = e => { camCfg.dist = parseFloat(e.target.value); };
+document.getElementById('camL').oninput = e => { camCfg.lookH = parseFloat(e.target.value); };
+document.getElementById('btnReset').onclick = () => { reset(); if (exam.active){ exam.idx=0; exam.hold=0; announce(STEPS[0]); } };
+
+// 講師役ナビ / 音声 / ガイド線 のボタン
+const btnExam=document.getElementById('btnExam'), btnVoice=document.getElementById('btnVoice'), btnGuide=document.getElementById('btnGuide');
+// 検定開始 → 検定を開始し、視界確保のためパネルを畳む
+btnExam.onclick = () => { ensureAudio(); startExam(); setPanelCollapsed(true); };
+// 停止(常時表示) → 検定を中止
+document.getElementById('btnStopHdr').onclick = () => { stopExam(); };
+// リセット増設(常時表示) → 機体を着陸位置へ。検定中なら最初のステップへ戻す
+document.getElementById('btnResetHdr').onclick = () => { reset(); if (exam.active){ exam.idx=0; exam.hold=0; announce(STEPS[0]); } };
+btnVoice.onclick = () => { exam.voice = !exam.voice; btnVoice.textContent = exam.voice?'音声 ON':'音声 OFF';
+  btnVoice.classList.toggle('on', exam.voice); if (!exam.voice && window.speechSynthesis) window.speechSynthesis.cancel(); };
+btnGuide.onclick = () => { exam.showGuide = !exam.showGuide; btnGuide.textContent = exam.showGuide?'表示':'非表示';
+  btnGuide.classList.toggle('on', exam.showGuide);
+  if (exam.active) setGuideline(STEPS[exam.idx].from, STEPS[exam.idx].target); };
+
+// 風速(10段階) / 風向き(8方位) のセレクト
+const windLv=document.getElementById('windLv'), windDir=document.getElementById('windDir');
+for (let v=0; v<=9; v+=0.5){ const o=document.createElement('option'); o.value=v; o.textContent=`${v.toFixed(1)} m/s`; windLv.appendChild(o); }
+WIND_DIRS.forEach((d,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=`${d.l}の風`; windDir.appendChild(o); });
+windLv.onchange = () => { wind.level=parseFloat(windLv.value); updateWindVec(); };
+windDir.onchange = () => { wind.dir=parseInt(windDir.value); updateWindVec(); };
+updateWindVec();
+
+// 検定ステージ選択 (デフォルト=検定順で自動)。種目に応じて選択肢を作り直す。
+const stageSel=document.getElementById('stageSel');
+function buildStageOptions(){
+  stageSel.innerHTML='';
+  const add=(v,t)=>{ const o=document.createElement('option'); o.value=v; o.textContent=t; stageSel.appendChild(o); };
+  add('auto','航行ルート順（自動で次へ）');
+  currentCourse.stageNames.forEach((nm,i)=> add(i, nm));
+  stageSel.value='auto';
+}
+stageSel.onchange = () => {
+  const v = stageSel.value;
+  if (v==='auto') return;
+  ensureAudio(); resetScore(); lastZone=0;
+  exam.active = true; exam.idx = parseInt(v); exam.hold = 0; exam.timeLeft = exam.timeLimit;
+  announce(STEPS[exam.idx]);
+  stageSel.value = 'auto'; // 以降は自動で次へ
+};
+// 種目選択 (スクエア / 8の字 / 異常事態)
+const courseSelEl = document.getElementById('courseSel');
+courseSelEl.onchange = e => { loadCourse(e.target.value); };
+// 限定変更選択 (基本 / 目視外 / 夜間) ※目視外・夜間は8の字なし
+document.getElementById('varSel').onchange = e => {
+  variation = e.target.value;
+  const fig = courseSelEl.querySelector('option[value="figure8"]');
+  if (variation!=='basic'){ fig.disabled = true; if (courseSelEl.value==='figure8') courseSelEl.value='square'; }
+  else fig.disabled = false;
+  applyEnvironment();
+  loadCourse(courseSelEl.value);
+};
+
+// ---- 初期コース読込 + ループ ----
+loadPreset(2);          // 既定は必ずモード2(入力割り当てもモード2標準で開始)
+applyEnvironment();     // 既定は基本(昼間・normal表示)
+loadCourse('square');   // 既定はスクエア飛行(コース生成・ステージ選択肢・STEPS設定)
+let last = performance.now();
+function loop(now){
+  const dt = Math.min(0.05,(now-last)/1000); last=now;
+  // ゲームパッド接続表示
+  const pad = getPad(); const gpEl=document.getElementById('gp');
+  if (pad){ gpEl.textContent='🎮 '+pad.id.slice(0,30); gpEl.className='ok'; }
+  else { gpEl.textContent='🎮 未接続（キーボードで操作可）'; gpEl.className=''; }
+  pollAxisButtons();
+  update(dt);
+  examUpdate(dt);
+  checkZones(dt);
+  // 目標マーカーの演出(回転＋上下の脈動)
+  if (targetMark.visible){ targetMark.rotateZ(dt*1.5); // 進行方向に正対した向きを保ったまま自軸で回転
+    targetMark.scale.setScalar(1 + 0.12*Math.sin(now*0.005)); }
+  props.forEach((p,i)=> p.rotation.y += (i%2?28:-28)*dt);
+  droneLight.position.set(state.pos.x, state.pos.y+0.12, state.pos.z); // 夜間の機体灯火を追従
+  { const sc = Math.max(0.2, 1 - 0.10*state.pos.y); // 5m上昇で50%、線形に縮小(下限20%)
+    shadowBlob.position.set(state.pos.x, 0.03, state.pos.z); shadowBlob.scale.set(sc,sc,sc); }
+  updateCamera(); updateFpv(); updateHUD(); updateCalibLive();
+  if (renderMode==='fpv'){
+    const W=window.innerWidth, H=window.innerHeight;
+    // メイン=機体カメラ(FPV) 全画面
+    renderer.setScissorTest(false); renderer.setViewport(0,0,W,H);
+    fpvCam.aspect=W/H; fpvCam.updateProjectionMatrix();
+    renderer.render(scene, fpvCam);
+    // 直上ナビ(ワイプ) を右下に重ねて描画
+    const pw=Math.min(300, Math.round(W*0.26)), ph=pw, mx=18, myCss=18;
+    const px=W-pw-mx, pyGl=myCss; // WebGLは下原点
+    // HTML枠を一致させる(CSSは上原点)
+    const pip=document.getElementById('pip');
+    pip.style.left=px+'px'; pip.style.top=(H-ph-myCss)+'px'; pip.style.width=pw+'px'; pip.style.height=ph+'px';
+    renderer.setViewport(px,pyGl,pw,ph); renderer.setScissor(px,pyGl,pw,ph); renderer.setScissorTest(true);
+    topCam.aspect=1; topCam.updateProjectionMatrix();
+    renderer.render(scene, topCam);
+    renderer.setScissorTest(false);
+  } else {
+    // 通常描画: FPVで縮小したビューポート/シザーを全画面に戻す(切替時の黒画面対策)
+    renderer.setScissorTest(false);
+    renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
+    renderer.render(scene, camera);
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+window.addEventListener('resize', () => {
+  const W=window.innerWidth, H=window.innerHeight;
+  camera.aspect = W/H; camera.updateProjectionMatrix();
+  fpvCam.aspect = W/H; fpvCam.updateProjectionMatrix();
+  renderer.setSize(W, H);
+});
+</script>
+<!-- DRONEPEAK FLIGHT SIM v1.0 (build-marker) -->
+</body>
+</html>
+                 
