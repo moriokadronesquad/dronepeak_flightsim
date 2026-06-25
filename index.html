@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DRONE PEAK｜二等実地試験シミュレーター</title>
-<meta name="description" content="DRONE PEAK Multicopter Flight School｜二等無人航空機操縦士 実地試験シミュレーター">
+<title>DRONE PEAK｜一等・二等　実地講習シミュレーター</title>
+<meta name="description" content="DRONE PEAK Multicopter Flight School｜一等・二等 無人航空機操縦士 実地講習シミュレーター">
 <style>
   :root{
     --pp:#473b6b;        /* ブランド紫 */
@@ -70,7 +70,7 @@
   <div id="ui">
     <div class="logo3d-space" aria-hidden="true"></div>
     <h1><span class="reg">DRONE</span>&nbsp;<span class="bold">PEAK</span></h1>
-    <div class="sub">二等無人航空機操縦士　実地試験シミュレーター</div>
+    <div class="sub">一等・二等　無人航空機操縦士　実地講習シミュレーター</div>
     <div class="sub2">MULTICOPTER FLIGHT SCHOOL</div>
 
     <!-- 認証ゲート -->
@@ -84,7 +84,7 @@
         <span><a href="#" id="termsLink">利用規約・再配布禁止</a>に同意します（受講者本人の学習目的にのみ使用し、ファイルの再配布・再販・公開を行いません）</span>
       </label>
       <div class="msg" id="gateMsg"></div>
-      <div class="hint">キーはお持ちのスクール（DRONE PEAK）から配布されます。</div>
+      <div class="hint">キーは（DRONE PEAK）事務局から配布されます。</div>
     </div>
 
     <!-- 認証済み：起動 -->
@@ -189,11 +189,11 @@
      ========================================================= */
   // 有効キーは「平文」ではなくSHA-256ハッシュで保持（ソースから逆算しにくくする）
   const VALID_HASHES = [
-    "4152e54582f8309759c1efbf37fbdb943dba165a0d028c1476b564b25e7159bf", // DPMS-2026-A001
-     "f935cab9ab42dddd80c088749eeadc4ca20a09ed2092b38af2142fda9422ba59", // DPMS-2026-A002
-     "f935cab9ab42dddd80c088749eeadc4ca20a09ed2092b38af2142fda9422ba59", // DPMS-2026-A003
+    "4152e54582f8309759c1efbf37fbdb943dba165a0d028c1476b564b25e7159bf", 
+     "93a46f256992107568a34d723b5289935ccf928442c5643c4123144b1b91db81", 
+     "f4eb92c0650eeaf1422b5adb2ac17fc5d676f9001586efe01d5aebb29d026f0a", 
   ];
-  const SIM_URL = "./dronepeak_flightsimV1.0.html";
+  const SIM_URL = "./dronepeak_ikkyu_flightsimV0.1.html";
   const LS_KEY  = "dp_activated";
 
   // --- SHA-256（crypto.subtle、無ければ純JS実装にフォールバック）---
