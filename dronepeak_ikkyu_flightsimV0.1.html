@@ -394,7 +394,7 @@ const COURSE_DEFS = {
     steps:[
       {type:'ascend',from:[0,0,0],target:[0,3.5,0],text:'離陸し、高度3.5mまで上昇してください。'},
       {type:'hover',from:[0,3.5,0],target:[0,3.5,0],hold:5,text:'その位置で5秒間ホバリングしてください。'},
-      {type:'move',from:[0,3.5,0],target:[0,3.5,2.5],text:'機首を進行方向に向け、A地点（手前中央）へ移動してください。'},
+      {type:'move',from:[0,3.5,0],target:[0,3.5,2.5],text:'機首をA地点に向け旋回し、旋回後A地点へ移動してください。'},
       {type:'move',from:[0,3.5,2.5],target:[6.5,3.5,2.5],text:'B地点（右手前）へ移動してください。'},
       {type:'move',from:[6.5,3.5,2.5],target:[6.5,3.5,-2.5],text:'C地点（右奥）へ移動してください。'},
       {type:'move',from:[6.5,3.5,-2.5],target:[-6.5,3.5,-2.5],text:'D地点（左奥）へ移動してください。'},
@@ -443,13 +443,13 @@ const COURSE_DEFS = {
     corridor:{w:2.4,d:3.4,x:0,z:0.9},
     pylons:{ E:[-6.5,2.5], A:[0,2.5], B:[6.5,2.5] },
     drawPath:()=>{ lineG(-6.5,2.5,6.5,2.5,0xffffff,0.023); lineG(0,0,0,2.5,0x88ccff,0.023); },
-    stageNames:['① 離陸・上昇','② ホバリング','③ A地点','④ 右へ側方移動(B)','⑤ 左へ側方移動(E)','⑥ A地点へ','⑦ 緊急ホバリング','⑧ 緊急着陸'],
+    stageNames:['① 離陸・上昇','② ホバリング','③ A地点','④ B地点へ移動','⑤ E地点へ移動','⑥ A地点へ','⑦ 緊急ホバリング','⑧ 緊急着陸'],
     steps:[
       {type:'ascend',from:[0,0,0],target:[0,3.5,0],text:'【ATTIモード】離陸し、高度3.5mまで上昇してください。'},
       {type:'hover',from:[0,3.5,0],target:[0,3.5,0],hold:5,text:'5秒間ホバリングしてください。'},
-      {type:'move',from:[0,3.5,0],target:[0,3.5,2.5],text:'A地点（前方中央）へ。機首は前方に固定したまま。'},
-      {type:'move',from:[0,3.5,2.5],target:[6.5,3.5,2.5],text:'機首を前方に向けたまま、右（B地点）へ側方移動してください。'},
-      {type:'move',from:[6.5,3.5,2.5],target:[-6.5,3.5,2.5],text:'E地点へ機首を旋回し、旋回完了後に移動を開始してください。'},
+      {type:'move',from:[0,3.5,0],target:[0,3.5,2.5],text:'機首をA地点に向けて旋回、旋回後A地点に向けて移動してください。'},
+      {type:'move',from:[0,3.5,2.5],target:[6.5,3.5,2.5],text:'機首をB地点に向けて旋回、旋回後B地点に向けて移動してください。'},
+      {type:'move',from:[6.5,3.5,2.5],target:[-6.5,3.5,2.5],text:'機首をE地点に向けて旋回、旋回後E地点に向けて移動してください。'},
       {type:'move',from:[-6.5,3.5,2.5],target:[0,3.5,2.5],text:'A地点（中央）へ戻ってください。'},
       {type:'hover',from:[0,3.5,2.5],target:[0,3.5,2.5],hold:3,text:'緊急事態発生。その場でホバリングしてください。'},
       {type:'land',from:[0,3.5,2.5],target:[0,0,0],text:'緊急着陸。離着陸地点（H）へ最短で移動し、着陸してください。'},
@@ -750,7 +750,7 @@ const exam = { active:false, idx:0, hold:0, voice:true, showGuide:true,
                graceUsed:false, graceActive:false, graceT:0, dangerT:0, descentPeak:0 };
 function resetScore(){ exam.score=100; exam.deducted=0; exam.log=[]; exam.failed=false;
   exam.graceUsed=false; exam.graceActive=false; exam.graceT=0; exam.dangerT=0; exam.descentPeak=0;
-  exam.rotAcc=undefined; exam.rotT=0; exam.emgArmed=false; exam.emgFired=false; exam.emgT=0; }
+  exam.rotAcc=undefined; exam.rotT=0; exam.rotReady=false; exam.emgArmed=false; exam.emgFired=false; exam.emgT=0; }
 function fmtTime(s){ s=Math.max(0,Math.ceil(s)); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
 
 // 破線ガイドライン
@@ -768,16 +768,20 @@ dropLine.visible=false; scene.add(dropLine);
 
 // ナビ破線(太め): GL線は太さに制約があるためBox列で描画し、手前→奥へ流れる点滅(リレー)を行う
 const guideDashGroup = new THREE.Group(); scene.add(guideDashGroup);
-let guideDashes = [];
+let guideDashes = [];      // 経路ドット(リレー点滅)
+let guideDropDots = [];    // 目標の真下への垂直ドット列(定値の明るさ)
 const GD_LEN=0.2, GD_GAP=0.125, GD_W=0.09;   // 破線長 / 間隔 / 太さ(75%)
 function buildGuideDashes(from, to){
-  guideDashes.forEach(m=>{ guideDashGroup.remove(m); m.geometry.dispose(); m.material.dispose(); });
-  guideDashes=[];
+  [...guideDashes, ...guideDropDots].forEach(m=>{ guideDashGroup.remove(m); m.geometry.dispose(); m.material.dispose(); });
+  guideDashes=[]; guideDropDots=[];
   if(!from || !to) return;
   const spacing=GD_LEN+GD_GAP; const r=GD_W*0.85;   // ドット間隔 / 丸ドット半径
-  const addDot=(x,y,z)=>{ const m=new THREE.Mesh(new THREE.SphereGeometry(r,14,12),
-      new THREE.MeshBasicMaterial({ color:0x37e0ff, transparent:true, opacity:0.3, depthWrite:false }));
-    m.position.set(x,y,z); guideDashGroup.add(m); guideDashes.push(m); };
+  const mkDot=(x,y,z,op,relay)=>{ const m=new THREE.Mesh(new THREE.SphereGeometry(r,14,12),
+      new THREE.MeshBasicMaterial({ color:0x37e0ff, transparent:true, opacity:op, depthWrite:false }));
+    m.position.set(x,y,z); guideDashGroup.add(m); (relay?guideDashes:guideDropDots).push(m); };
+  const addDot=(x,y,z)=>mkDot(x,y,z,0.3,true);
+  // 目標の真下への垂直ドット列(従来の細線→ドット表現に変更)
+  if (to.y>0.6){ for(let yy=to.y; yy>0.15; yy-=0.45) mkDot(to.x, yy, to.z, 0.42, false); }
   // 8の字: 両端が円(半径2.5・中心(±2.5,0))上にあれば、その円弧に沿ってドットを並べる
   const R=2.5, EPS=0.35; let arcC=null;
   for(const cx of [2.5,-2.5]){
@@ -804,9 +808,8 @@ function setGuideline(from, to){
   // 通過ゲートの軸を進行方向(from→to)に合わせ、機体に正対させる
   const gdir = to.clone().sub(from); gdir.y=0;
   if (gdir.lengthSq()>1e-5){ gdir.normalize(); targetMark.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1), gdir); }
-  // 目標の真下への垂線
-  dropLine.geometry.setFromPoints([to, new THREE.Vector3(to.x,0.02,to.z)]); dropLine.computeLineDistances();
-  dropLine.visible = (to.y>0.5);
+  // 目標の真下への垂線はドット列(buildGuideDashes内)で表現するため、旧GL線は非表示
+  dropLine.visible = false;
 }
 // 読み上げ用に表記を整える: 「数字+m」→「メートル」、「機首」→「きしゅ」
 function speechText(t){
@@ -829,6 +832,10 @@ function announce(step){
     exam.rotReqSign = cw ? -1 : 1;   // 右回り(時計回り)=ヨー減少(負) / 左回り=ヨー増加(正)
     exam.rotDirLabel = cw ? '右回り（時計回り）' : '左回り（反時計回り）';
     txt = '離陸地点で、'+exam.rotDirLabel+'に、約20秒で1回転する速度で旋回してください。';
+    exam.rotReady = false;   // 「それでは開始してください」の合図までカウント開始しない
+    const delay = exam.voice ? 3400 : 1200;
+    setTimeout(()=>{ if (exam.active && STEPS[exam.idx] && STEPS[exam.idx].type==='rotate'){
+      speak('それでは開始してください。'); exam.rotReady=true; exam.rotPrevYaw=state.yaw; } }, delay);
   }
   document.getElementById('instrText').textContent = '講師: ' + txt;
   if (step.type!=='done') speak(txt);
@@ -1050,6 +1057,11 @@ function examUpdate(dt){
   } else if (step.type==='rotate'){
     // ピルエット：ヨー積算で1回転を検知し、所要時間16〜26秒で評価
     if (exam.rotAcc===undefined){ exam.rotAcc=0; exam.rotSigned=0; exam.rotT=0; exam.rotPrevYaw=state.yaw; }
+    if (!exam.rotReady){   // 開始合図までカウントせず基準だけ更新
+      exam.rotPrevYaw = state.yaw;
+      sub.textContent = '指示を確認中… 「それでは開始してください」の合図でカウント開始';
+      return;
+    }
     let d = state.yaw - exam.rotPrevYaw;
     while(d>Math.PI) d-=2*Math.PI; while(d<-Math.PI) d+=2*Math.PI;
     exam.rotAcc += Math.abs(d); exam.rotSigned += d; exam.rotPrevYaw = state.yaw; exam.rotT += dt;
@@ -1485,7 +1497,7 @@ function loop(now){
   if (targetMark.visible){ targetMark.rotateZ(dt*1.5); // 進行方向に正対した向きを保ったまま自軸で回転
     targetMark.scale.setScalar(1 + 0.12*Math.sin(now*0.005)); }
   // ナビ破線: 手前(from)→奥(to)へ流れる点滅(リレー)
-  guideDashGroup.visible = exam.active && exam.showGuide && guideDashes.length>0;
+  guideDashGroup.visible = exam.active && exam.showGuide && (guideDashes.length>0 || guideDropDots.length>0);
   if (guideDashGroup.visible){
     const N=guideDashes.length, phase=(now/1000*8) % (N+4);   // 1秒あたり8ダッシュ進む
     for(let i=0;i<N;i++){ const lit=Math.max(0, 1-Math.abs(i-phase)/2);
