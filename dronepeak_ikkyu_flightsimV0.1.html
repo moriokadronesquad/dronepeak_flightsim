@@ -49,7 +49,7 @@
                   padding:5px 8px; font-size:12px; max-width:150px; }
   #gp { font-size: 12px; color: #9fb3c8; margin-top: 6px; }
   #gp.ok { color: #6fe39a; }
-  #help { position: fixed; bottom: 12px; left: 12px; color: #eef; font-size: 12px;
+  #help { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); color: #eef; font-size: 12px;
           background: rgba(0,0,0,.32); padding: 8px 12px; border-radius: 8px; line-height: 1.6; max-width: 470px; }
   #instructor { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 20;
                 background: rgba(18,28,40,.9); color: #fff; padding: 12px 22px; border-radius: 12px;
@@ -59,7 +59,7 @@
   #instructor.examdim:hover, #panel.examdim:hover { opacity: 1; }  /* マウスを乗せると一時的に元へ */
   #instrText { font-size: 16px; font-weight: 600; color: #d6ecff; }
   #instrSub { font-size: 13px; color: #7ad1ff; margin-top: 4px; min-height: 16px; font-variant-numeric: tabular-nums; }
-  #legend { position: fixed; bottom: 12px; right: 12px; background: rgba(20,28,38,.86); color:#e8eef5;
+  #legend { position: fixed; bottom: 12px; left: 12px; background: rgba(20,28,38,.86); color:#e8eef5;
             padding: 10px 12px; border-radius: 8px; font-size: 12px; line-height: 1.9; }
   #legend .sw { display:inline-block; width:13px; height:13px; border-radius:3px; margin-right:7px; vertical-align:-2px; }
   #panel input[type=range] { width: 120px; }
@@ -162,6 +162,10 @@
   <div class="row"><span>リセット</span>
     <button id="btnReset">着陸位置へ</button></div>
   <div id="gp">🎮 ゲームパッド: 未接続（キーボードで操作可）</div>
+  <div class="row" style="margin-top:6px;border-top:1px solid #2a3a4d;padding-top:10px;"><span>チュートリアル</span>
+    <button id="btnTutorial" style="background:#7a5cd0;">❓ 画面案内</button></div>
+  <div class="row"><span style="font-size:11px;color:#9fb3c8;">操作（モード別）</span>
+    <button id="btnTutPage" style="background:#7a5cd0;">🕹 操作チュートリアル</button></div>
   </div>
 </div>
 
@@ -209,6 +213,33 @@
       <button class="bPreset" id="presetM1">モード1 標準</button>
       <button class="bReset" id="calibClearLearn">中止</button>
       <button class="bClose" id="calibClose">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- アプリ内チュートリアル(吹き出しナビ) -->
+<style>
+  #tour{ position:fixed; inset:0; z-index:80; background:rgba(6,8,14,.5); }
+  #tour.tourHide{ display:none; }
+  #tourHi{ position:fixed; border:3px solid #ffe27a; border-radius:10px; pointer-events:none; transition:left .18s,top .18s,width .18s,height .18s; box-shadow:0 0 14px rgba(255,226,122,.6); }
+  #tourBubble{ position:fixed; width:320px; max-width:calc(100vw - 24px); background:#1e1834; color:#e9e6f3; border:1px solid #6a5da0;
+    border-radius:12px; padding:14px 16px; box-shadow:0 12px 32px rgba(0,0,0,.55); font-size:14px; line-height:1.6; }
+  #tourTitle{ color:#ffe27a; font-weight:800; margin-bottom:6px; }
+  #tourBtns{ display:flex; align-items:center; gap:8px; margin-top:12px; }
+  #tourBtns button{ font-family:inherit; cursor:pointer; border:none; border-radius:8px; padding:7px 12px; font-size:13px; color:#fff; background:#2d6cdf; }
+  #tourBtns #tourPrev{ background:#5a6675; } #tourBtns #tourClose{ background:#444f60; margin-left:auto; }
+  #tourStep{ font-size:12px; color:#9fb3c8; }
+</style>
+<div id="tour" class="tourHide">
+  <div id="tourHi"></div>
+  <div id="tourBubble">
+    <div id="tourTitle"></div>
+    <div id="tourText"></div>
+    <div id="tourBtns">
+      <button id="tourPrev">前へ</button>
+      <span id="tourStep"></span>
+      <button id="tourNext">次へ ▶</button>
+      <button id="tourClose">終了</button>
     </div>
   </div>
 </div>
@@ -1395,6 +1426,8 @@ document.getElementById('btnFlight').onclick = () => { const b=document.getEleme
   state.flight = state.flight==='GPS'?'ATTI':'GPS'; b.textContent=state.flight; b.classList.toggle('on', state.flight==='GPS'); };
 document.getElementById('btnCam').onclick = () => { camMode=camMode?0:1;
   document.getElementById('btnCam').textContent = camMode===0?'操縦者視点':'追従視点'; };
+// 操作チュートリアル(モード別アニメ)ページへ。シミュレーターからは戻るボタンで復帰。
+{ const _tp=document.getElementById('btnTutPage'); if(_tp) _tp.onclick=()=>{ location.href='tutorial.html'; }; }
 // カメラ視点パラメータ(スライダー)
 document.getElementById('camH').oninput = e => { camCfg.h = parseFloat(e.target.value); };
 document.getElementById('camD').oninput = e => { camCfg.dist = parseFloat(e.target.value); };
@@ -1473,6 +1506,52 @@ document.getElementById('varSel').onchange = e => {
   applyEnvironment();
   loadCourse(courseSelEl.value);
 };
+
+// ====================== アプリ内チュートリアル(吹き出しナビ) ======================
+(function tour(){
+  const steps = [
+    {id:'btnGrade',  t:'受講コースの切替',        x:'「一等無人航空機／二等無人航空機」をここで切り替えます。種目も自動で入れ替わります。'},
+    {id:'varSel',    t:'限定変更',                x:'基本／目視外／夜間 を選びます（目視外・夜間は8の字なし）。'},
+    {id:'courseSel', t:'種目の選択',              x:'スクエア・8の字・異常事態など、練習する科目を選びます。'},
+    {id:'btnStick',  t:'入力モード',              x:'プロポのモード（モード2／モード1）を切り替えます。選んだモードは次回も保存されます。'},
+    {id:'btnCalib',  t:'スティック割り当て',      x:'実機プロポを接続して開き、「オート割り当て」で各スティックの軸を自動読み取りできます。'},
+    {id:'btnExam',   t:'講習の開始',              x:'準備ができたら「▶ 実地講習開始」。講師の音声とナビが流れます（Enterキーでも開始）。'},
+    {id:'instructor',t:'操縦ナビ ①（講師ガイド）', x:'画面上部の講師ガイドが、音声＋テキストで次の操作を案内します。地点や機首の向きもここで指示されます。'},
+    {id:'hud',       t:'操縦ナビ ②（計器）',       x:'左上に 制限時間・持ち点（減点）・高度・水平速度・機首方位を表示します。持ち点が合格ラインを下回ると赤くなります。'},
+    {id:null,        t:'操縦ナビ ③（飛行ガイド）', x:'飛行中は青いドットの経路と目標リングが表示されます。ドットは手前→奥へ流れて進む向きを示し、リングでホバリング位置と秒数を確認できます。'}
+  ];
+  let i=0;
+  const $i=id=>document.getElementById(id);
+  const ov=$i('tour'), hi=$i('tourHi'), bub=$i('tourBubble'), tt=$i('tourTitle'), tx=$i('tourText'), stp=$i('tourStep');
+  function show(){
+    const s=steps[i]; tt.textContent=(i+1)+'. '+s.t; tx.textContent=s.x; stp.textContent=(i+1)+' / '+steps.length;
+    const el = s.id ? $i(s.id) : null;
+    if (el){
+      const r=el.getBoundingClientRect();
+      hi.style.display='block';
+      hi.style.left=(r.left-6)+'px'; hi.style.top=(r.top-6)+'px';
+      hi.style.width=(r.width+12)+'px'; hi.style.height=(r.height+12)+'px';
+      const bw=Math.min(320, window.innerWidth-24), bh=bub.offsetHeight||150;
+      let bx=r.left, by=r.bottom+12;
+      if (by+bh > window.innerHeight-10) by=Math.max(10, r.top-bh-12);
+      bx=Math.min(Math.max(10,bx), window.innerWidth-bw-10);
+      bub.style.left=bx+'px'; bub.style.top=by+'px';
+    } else {
+      hi.style.display='none';
+      bub.style.left=Math.max(10,(window.innerWidth/2-160))+'px';
+      bub.style.top=Math.max(10,(window.innerHeight/2-90))+'px';
+    }
+    $i('tourPrev').disabled = (i===0);
+    $i('tourNext').textContent = (i===steps.length-1) ? '完了' : '次へ ▶';
+  }
+  function start(){ if (typeof setPanelCollapsed==='function') setPanelCollapsed(false); ov.classList.remove('tourHide'); i=0; setTimeout(show,60); }
+  function close(){ ov.classList.add('tourHide'); }
+  $i('btnTutorial').onclick=start;
+  $i('tourClose').onclick=close;
+  $i('tourPrev').onclick=()=>{ if(i>0){ i--; show(); } };
+  $i('tourNext').onclick=()=>{ if(i<steps.length-1){ i++; show(); } else close(); };
+  window.addEventListener('resize', ()=>{ if(!ov.classList.contains('tourHide')) show(); });
+})();
 
 // ---- 初期コース読込 + ループ ----
 // 既定はモード2。ただし以前に選んだモードがあればそれを尊重(試験開始でモード2に戻らない)

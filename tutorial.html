@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DRONE PEAK｜操作チュートリアル（モード2・モード1）</title>
+<style>
+  :root{ --pp:#473b6b; --pp2:#5b4d86; --acc:#ffe27a; --txt:#e9e6f3; --line:#6a5da0; --cyan:#37e0ff; }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html,body{ min-height:100%; font-family:"Hiragino Maru Gothic ProN","M PLUS Rounded 1c","Hiragino Sans",sans-serif; color:var(--txt);
+    background:radial-gradient(120% 120% at 50% 0%, #1b1630 0%, #120e22 60%, #0a0816 100%); }
+  .wrap{ max-width:980px; margin:0 auto; padding:20px 16px 60px; }
+  h1{ font-size:clamp(22px,4vw,34px); font-weight:800; letter-spacing:.04em; text-align:center;
+    background:linear-gradient(180deg,#fff,#cfc6f2); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .sub{ text-align:center; color:#b9b0e0; font-size:14px; margin:6px 0 18px; }
+  .modes{ display:flex; gap:10px; justify-content:center; margin-bottom:18px; }
+  .modes button{ font-family:inherit; cursor:pointer; border:1px solid var(--line); background:rgba(30,24,52,.7); color:var(--txt);
+    padding:10px 20px; border-radius:12px; font-size:16px; font-weight:700; transition:.15s; }
+  .modes button.on{ background:linear-gradient(180deg,#2bb673,#1e9e62); border-color:#2bb673; color:#fff; }
+  .modes button:hover{ filter:brightness(1.1); }
+  .stage{ display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start; }
+  @media(max-width:760px){ .stage{ grid-template-columns:1fr; } }
+  .card{ background:rgba(30,24,52,.82); border:1px solid var(--line); border-radius:16px; padding:16px; box-shadow:0 12px 36px rgba(0,0,0,.45); }
+  .card h2{ font-size:15px; color:var(--acc); margin-bottom:10px; }
+  .sticks{ display:flex; gap:18px; justify-content:center; }
+  .stickbox{ text-align:center; }
+  .stickbox .name{ font-size:12px; color:#b9b0e0; margin-top:6px; }
+  .stickbox .fn{ font-size:11px; color:#9a92c2; line-height:1.5; margin-top:2px; }
+  svg{ display:block; }
+  .caption{ text-align:center; margin-top:14px; min-height:64px; }
+  .caption .act{ font-size:20px; font-weight:800; color:var(--acc); }
+  .caption .desc{ font-size:14px; color:#d6ecff; margin-top:6px; line-height:1.6; }
+  .controls{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:14px; }
+  .controls button{ font-family:inherit; cursor:pointer; border:1px solid var(--line); background:rgba(20,16,36,.8); color:var(--txt);
+    padding:8px 12px; border-radius:9px; font-size:13px; }
+  .controls button.sel{ background:var(--pp2); border-color:var(--pp2); color:#fff; }
+  .controls button.play{ background:#2d6cdf; border-color:#2d6cdf; color:#fff; }
+  .legend{ font-size:12px; color:#9fb3c8; line-height:1.8; }
+  .legend b{ color:var(--acc); }
+  .kbd{ background:#fff; color:#222; border-radius:4px; padding:0 6px; font-size:11px; border:1px solid #ccd; font-weight:700; }
+  .tips{ margin-top:18px; }
+  .tips li{ margin:6px 0 6px 18px; font-size:13px; line-height:1.7; }
+  .back{ display:inline-block; margin-top:20px; color:#cfc6f2; text-decoration:underline; font-size:13px; }
+  .note{ font-size:11px; color:#8a82b3; text-align:center; margin-top:8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>操作チュートリアル</h1>
+  <div class="sub">プロポ（送信機）の動かし方を、モード別にアニメで確認できます</div>
+
+  <div class="modes">
+    <button id="m2" class="on">モード2（既定）</button>
+    <button id="m1">モード1</button>
+  </div>
+
+  <div class="stage">
+    <div class="card">
+      <h2>🕹 スティックの動き</h2>
+      <div class="sticks">
+        <div class="stickbox">
+          <svg id="svgL" width="150" height="150" viewBox="0 0 150 150"></svg>
+          <div class="name">左スティック</div>
+          <div class="fn" id="fnL"></div>
+        </div>
+        <div class="stickbox">
+          <svg id="svgR" width="150" height="150" viewBox="0 0 150 150"></svg>
+          <div class="name">右スティック</div>
+          <div class="fn" id="fnR"></div>
+        </div>
+      </div>
+      <div class="caption">
+        <div class="act" id="capAct">—</div>
+        <div class="desc" id="capDesc">—</div>
+      </div>
+      <div class="controls">
+        <button class="play" id="playBtn">⏸ 一時停止</button>
+        <button data-a="throttle">スロットル</button>
+        <button data-a="yaw">ラダー</button>
+        <button data-a="pitch">エレベーター</button>
+        <button data-a="roll">エルロン</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🚁 機体の反応（上から見た図）</h2>
+      <canvas id="droneCv" width="320" height="300" style="width:100%;max-width:340px;display:block;margin:0 auto;background:#0e0b1c;border-radius:12px;"></canvas>
+      <div class="note">青い丸＝機体／赤い印＝機首（前方）。スロットルは右の高度バーで表示。</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <h2>📘 操作の対応表</h2>
+    <div class="legend" id="legend"></div>
+    <div class="legend" style="margin-top:10px;">
+      キーボードでも操作できます：スロットル <span class="kbd">W</span>/<span class="kbd">S</span>、
+      エレベーター <span class="kbd">↑</span>/<span class="kbd">↓</span>、
+      ラダー <span class="kbd">A</span>/<span class="kbd">D</span>、
+      エルロン <span class="kbd">←</span>/<span class="kbd">→</span>、
+      開始 <span class="kbd">Enter</span> / 停止 <span class="kbd">Space</span>
+    </div>
+  </div>
+
+  <div class="card tips">
+    <h2>💡 初心者のコツ</h2>
+    <ul>
+      <li>まず<b>高度を一定に保つ（ホバリング）</b>練習から。スロットルを細かく当てて高さをキープします。</li>
+      <li>スティックは<b>少しずつ</b>。大きく倒すと急に動いて流れます（特にATTI／GPSなしの科目）。</li>
+      <li>機首（赤い印）の向きで前後左右が変わります。まず<b>機首を進行方向に向け</b>てから動かすと迷いません。</li>
+      <li>左右の手で<b>同時に2本</b>を少しずつ。片方だけでなく組み合わせて微調整します。</li>
+      <li>慣れるまでは<b>モード2（既定）</b>がおすすめ。スクールの指示があればモード1に切替。</li>
+    </ul>
+  </div>
+
+  <div style="margin-top:22px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+    <a href="./dronepeak_ikkyu_flightsimV0.1.html" style="display:inline-block;background:linear-gradient(180deg,#2bb673,#1e9e62);color:#fff;padding:12px 20px;border-radius:12px;font-weight:700;text-decoration:none;">▶ シミュレーターに戻る</a>
+    <a class="back" href="./index.html" style="margin-top:0;">← タイトルへ戻る</a>
+  </div>
+</div>
+
+<script>
+const MODES = {
+  2: { left:{ v:'throttle', h:'yaw' }, right:{ v:'pitch', h:'roll' } },
+  1: { left:{ v:'pitch',    h:'yaw' }, right:{ v:'throttle', h:'roll' } }
+};
+const FN = {
+  throttle:{ name:'スロットル', up:'上昇', down:'下降', axis:'v', desc:'機体の高度を上げ下げします。上に倒すと上昇、下に倒すと下降。' },
+  yaw:     { name:'ラダー',     up:'機首・右回り', down:'機首・左回り', axis:'h', desc:'その場で機首の向きを左右に回します（ピルエット）。' },
+  pitch:   { name:'エレベーター', up:'前進', down:'後進', axis:'v', desc:'機首の向いている方向へ前進／後進します。' },
+  roll:    { name:'エルロン',   up:'右へ移動', down:'左へ移動', axis:'h', desc:'機体を左右へ水平移動（スライド）させます。' }
+};
+const ORDER = ['throttle','yaw','pitch','roll'];
+let mode = 2, curIdx = 0, playing = true, t0 = performance.now(), manual=false;
+const $ = id => document.getElementById(id);
+
+function stickSVG(){ return `
+  <circle cx="75" cy="75" r="62" fill="#0e0b1c" stroke="#3a2f5e" stroke-width="2"/>
+  <line x1="75" y1="20" x2="75" y2="130" stroke="#2a2350" stroke-width="2"/>
+  <line x1="20" y1="75" x2="130" y2="75" stroke="#2a2350" stroke-width="2"/>
+  <circle class="knob" cx="75" cy="75" r="16" fill="#5b4d86" stroke="#cfc6f2" stroke-width="2"/>
+  <circle class="knobdot" cx="75" cy="75" r="4" fill="#ffe27a"/>`;
+}
+$('svgL').innerHTML = stickSVG();
+$('svgR').innerHTML = stickSVG();
+
+function setKnob(svg, dx, dy){
+  const k = svg.querySelector('.knob'), d = svg.querySelector('.knobdot');
+  const x = 75 + dx*46, y = 75 + dy*46;
+  k.setAttribute('cx', x); k.setAttribute('cy', y);
+  d.setAttribute('cx', x); d.setAttribute('cy', y);
+}
+
+const cv = $('droneCv'), cx = cv.getContext('2d');
+let droneX=0, droneY=0, droneYaw=0, droneAlt=0.5, droneScale=1;
+
+function drawDrone(){
+  const W=cv.width, H=cv.height;
+  cx.clearRect(0,0,W,H);
+  const bx=W-26, bw=14, bh=H-40, by=20;
+  cx.fillStyle='#1a1430'; cx.fillRect(bx,by,bw,bh);
+  cx.fillStyle='#37e0ff'; const fh=bh*droneAlt; cx.fillRect(bx,by+bh-fh,bw,fh);
+  cx.fillStyle='#9fb3c8'; cx.font='10px sans-serif'; cx.textAlign='center'; cx.fillText('高度',bx+bw/2,by-6);
+  const ccx=(W-40)/2, ccy=H/2;
+  const px=ccx+droneX*70, py=ccy-droneY*70;
+  cx.save(); cx.translate(px,py); cx.rotate(droneYaw); cx.scale(droneScale,droneScale);
+  cx.fillStyle='#2d6cdf'; cx.beginPath(); cx.arc(0,0,26,0,Math.PI*2); cx.fill();
+  cx.strokeStyle='#9fc2ff'; cx.lineWidth=2; cx.stroke();
+  cx.strokeStyle='#6f8fd0'; cx.lineWidth=3;
+  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sy])=>{ cx.beginPath(); cx.moveTo(0,0); cx.lineTo(sx*22,sy*22); cx.stroke();
+    cx.fillStyle='#23344d'; cx.beginPath(); cx.arc(sx*22,sy*22,6,0,Math.PI*2); cx.fill(); });
+  cx.fillStyle='#ff3a2a'; cx.beginPath(); cx.moveTo(0,-30); cx.lineTo(-8,-16); cx.lineTo(8,-16); cx.closePath(); cx.fill();
+  cx.restore();
+}
+
+function lerp(a,b,k){ return a + (b-a)*k; }
+
+function update(now){
+  const dt = Math.min(0.05,(now-t0)/1000); t0=now;
+  const fn = FN[ORDER[curIdx]];
+  const ph = Math.sin(now/1000 * Math.PI);
+  const m = MODES[mode];
+  const sideL = (m.left.v===ORDER[curIdx])?'v':(m.left.h===ORDER[curIdx]?'h':null);
+  const sideR = (m.right.v===ORDER[curIdx])?'v':(m.right.h===ORDER[curIdx]?'h':null);
+  let lx=0,ly=0,rx=0,ry=0;
+  if (sideL==='v') ly=-ph; if (sideL==='h') lx=ph;
+  if (sideR==='v') ry=-ph; if (sideR==='h') rx=ph;
+  setKnob($('svgL'), lx, ly); setKnob($('svgR'), rx, ry);
+  let tX=0,tY=0,tYaw=0,tAlt=0.5, tScale=1;
+  const a = ORDER[curIdx];
+  if (a==='throttle'){ tAlt = 0.5 + ph*0.45; tScale = Math.pow(3, ph); }  // 上昇=拡大(最大300%) / 下降=縮小(最小1/3)
+  else if (a==='yaw') tYaw = ph*0.9;
+  else if (a==='pitch') tY = ph*0.9;
+  else if (a==='roll') tX = ph*0.9;
+  droneX=lerp(droneX,tX,0.15); droneY=lerp(droneY,tY,0.15);
+  droneYaw=lerp(droneYaw,tYaw,0.15); droneAlt=lerp(droneAlt,tAlt,0.15);
+  droneScale=lerp(droneScale,tScale,0.15);
+  drawDrone();
+  $('capAct').textContent = fn.name + '（' + (ph>=0?fn.up:fn.down) + '）';
+  $('capDesc').textContent = fn.desc;
+  requestAnimationFrame(update);
+}
+
+let cycleTimer=null;
+function startCycle(){ stopCycle(); cycleTimer=setInterval(()=>{ if(playing&&!manual){ curIdx=(curIdx+1)%ORDER.length; refreshSel(); } }, 3000); }
+function stopCycle(){ if(cycleTimer) clearInterval(cycleTimer); }
+
+function refreshMode(){
+  const m=MODES[mode];
+  $('fnL').innerHTML = '縦：'+FN[m.left.v].name+'<br>横：'+FN[m.left.h].name;
+  $('fnR').innerHTML = '縦：'+FN[m.right.v].name+'<br>横：'+FN[m.right.h].name;
+  $('m2').classList.toggle('on', mode===2);
+  $('m1').classList.toggle('on', mode===1);
+  const row = (s,o)=>`${s}スティック … 縦：<b>${FN[o.v].name}</b>（${FN[o.v].up}／${FN[o.v].down}）、横：<b>${FN[o.h].name}</b>（${FN[o.h].up}／${FN[o.h].down}）`;
+  $('legend').innerHTML = `【モード${mode}】<br>${row('左',m.left)}<br>${row('右',m.right)}`;
+}
+function refreshSel(){
+  document.querySelectorAll('.controls [data-a]').forEach(b=> b.classList.toggle('sel', b.dataset.a===ORDER[curIdx]));
+}
+
+$('m2').onclick=()=>{ mode=2; refreshMode(); };
+$('m1').onclick=()=>{ mode=1; refreshMode(); };
+$('playBtn').onclick=()=>{ playing=!playing; manual=false; $('playBtn').textContent = playing?'⏸ 一時停止':'▶ 再生'; if(playing) startCycle(); };
+document.querySelectorAll('.controls [data-a]').forEach(b=>{
+  b.onclick=()=>{ curIdx=ORDER.indexOf(b.dataset.a); manual=true; playing=false; $('playBtn').textContent='▶ 再生'; refreshSel(); };
+});
+
+refreshMode(); refreshSel(); startCycle();
+requestAnimationFrame(update);
+</script>
+</body>
+</html>
